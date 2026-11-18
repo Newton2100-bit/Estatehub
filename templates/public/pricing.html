@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block body %}
+<header class="nav"><a class="brand" href="/">Estate<span>Hub</span></a><nav><a href="/properties/">Properties</a><a href="/jobs/">Workers</a><a class="active" href="/pricing/">Pricing</a><a href="/about/">About</a></nav><a class="btn small" href="/register/">Get Started</a></header>
+<main class="public wrap center">
+  <div class="eyebrow">PRICING</div>
+  <h1>Pricing is not active yet</h1>
+  <p class="lead">The Individual, Professional, and Enterprise plans previously shown here were design placeholders. They are not available subscriptions, and EstateHub does not currently charge a monthly platform fee.</p>
+  <section class="panel" style="max-width:760px;margin:2rem auto;text-align:left">
+    <h2>What you can do in this prototype</h2>
+    <ul><li>Landlords can submit properties and manage maintenance jobs after account approval.</li><li>Tenants can browse listings, submit maintenance requests, and view their account records.</li><li>Workers can browse jobs, request approval, update assigned work, and see payout status.</li></ul>
+    <p>Rent collection and worker payout features support Safaricom Daraja when the business has configured its M-Pesa account and public callback service. External transfers can also be recorded in the ledger.</p>
+  </section>
+  <p><a class="btn" href="/register/">Create an account</a> <a class="btn ghost" href="/properties/">Browse properties</a></p>
+</main>
+{% endblock %}
