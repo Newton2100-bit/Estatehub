@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Assign Caretaker — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav"><a class="brand" href="/">Estate<span>Hub</span></a><a href="/dashboard/landlord/">← Landlord dashboard</a><a href="/logout/">Sign out</a></header>
+  <main class="public narrow">
+    <div class="eyebrow">PROPERTY TEAM</div>
+    <h1>Assign a caretaker</h1>
+    <p class="lead">Choose who will receive tenant maintenance reports and coordinate repairs for <b>{{property.title}}</b>.</p>
+    <section class="panel">
+      {% if form.caretaker.field.queryset %}
+      <form method="post">{% csrf_token %}{{form.as_p}}<button class="btn" type="submit">Save caretaker</button></form>
+      {% if property.caretaker_id and property.caretaker.profile.created_by_id == request.user.id %}<form method="post" action="/property/{{property.id}}/caretaker/reset-password/" class="caretaker-password-reset">{% csrf_token %}<p>Can’t sign in or lost the temporary password for {{property.caretaker.get_full_name|default:property.caretaker.username}}?</p><button class="btn ghost" type="submit">Issue a new temporary password</button></form>{% endif %}
+      <p><a href="/property/{{property.id}}/caretaker/create/">+ Create a caretaker account for this property</a></p>
+      {% else %}
+      <p>There is no caretaker assigned yet. Create an account for the person responsible for this property.</p>
+      <a class="btn" href="/property/{{property.id}}/caretaker/create/">Create and assign caretaker</a>
+      {% endif %}
+    </section>
+  </main>
+</div>
+{% endblock %}
