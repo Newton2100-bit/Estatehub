@@ -1,6 +1,10 @@
+import calendar
+from datetime import date, timedelta
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils import timezone
 from .locations import KENYA_COUNTIES
 
 class Profile(models.Model):
@@ -178,6 +182,21 @@ class Lease(models.Model):
     status=models.CharField(max_length=30,default="Active")
     document_name=models.CharField(max_length=180,default="Original Lease Agreement.pdf")
     application=models.OneToOneField(RentalApplication,null=True,blank=True,on_delete=models.SET_NULL,related_name="lease")
+
+    def monthly_term_end(self, today=None):
+        """Return this lease's current one-month term end, clamped by calendar month."""
+        today = today or timezone.localdate()
+        elapsed = max(0, (today.year - self.start_date.year) * 12 + today.month - self.start_date.month)
+
+        def add_months(value, months):
+            month_index = value.month - 1 + months
+            year = value.year + month_index // 12
+            month = month_index % 12 + 1
+            return date(year, month, min(value.day, calendar.monthrange(year, month)[1]))
+
+        if add_months(self.start_date, elapsed) > today:
+            elapsed = max(0, elapsed - 1)
+        return add_months(self.start_date, elapsed + 1) - timedelta(days=1)
 
 class LeaseChangeRequest(models.Model):
     TYPE_CHOICES=[("renewal","Renewal"),("move_out","Move-out")]
