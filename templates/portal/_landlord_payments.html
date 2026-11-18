@@ -1,0 +1,53 @@
+<section class="panel landlord-payment-section" id="rent-deposits">
+  <div class="landlord-section-heading">
+    <div><div class="eyebrow">INCOME LEDGER</div><h2>Rent & deposit receipts</h2><p>Tenant payments and security deposits, newest first.</p></div>
+    <span class="badge">{{landlord_receipts|length}} records</span>
+  </div>
+  {% if landlord_receipts %}
+    <div class="table-scroll landlord-payment-table-wrap">
+      <table class="landlord-payment-table">
+        <thead><tr><th>Property / tenant</th><th>Payment</th><th>Period</th><th>Received</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for p in landlord_receipts %}
+            <tr>
+              <td><strong>{% if p.lease_id %}{{p.lease.property.title}}{% if p.lease.unit_id %} · Unit {{p.lease.unit.unit_number}}{% endif %}{% elif p.booking_id %}{{p.booking.property.title}}{% if p.booking.unit_id %} · Unit {{p.booking.unit.unit_number}}{% endif %}{% else %}{{p.entity}}{% endif %}</strong><small>{% if p.user %}{{p.user.get_full_name|default:p.user.username}}{% else %}Tenant account unavailable{% endif %}</small></td>
+              <td>{{p.kind}}{% if p.payment_method %}<small>{{p.payment_method}}{% endif %}{% if p.provider_receipt %} · Receipt {{p.provider_receipt}}{% elif p.payment_reference %} · Ref {{p.payment_reference}}{% endif %}{% if p.payment_method %}</small>{% endif %}</td>
+              <td>{% if p.billing_period %}{{p.billing_period|date:'F Y'}}{% elif p.booking %}{{p.booking.check_in|date:'M j'}}–{{p.booking.check_out|date:'M j, Y'}}{% else %}One-time{% endif %}</td>
+              <td>{% if p.paid_at %}{{p.paid_at|date:'M j, Y'}}{% else %}{{p.created_at|date:'M j, Y'}}{% endif %}</td>
+              <td class="payment-amount">KES {{p.amount|floatformat:2}}</td>
+              <td><span class="badge {% if p.status == 'Completed' %}green{% elif p.status == 'Failed' or p.status == 'Review required' %}red{% else %}amber{% endif %}">{{p.status}}</span>{% if p.provider_result_description and p.status != 'Completed' %}<small>{{p.provider_result_description}}</small>{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="payment-empty-state"><span class="payment-empty-icon">↗</span><h3>No receipts yet</h3><p>Rent and deposit receipts will appear here after they are paid or recorded.</p><a class="btn ghost small" href="/leases/">Open leases</a></div>
+  {% endif %}
+</section>
+
+<section class="panel landlord-payment-section" id="worker-payouts">
+  <div class="landlord-section-heading">
+    <div><div class="eyebrow">OPERATING COSTS</div><h2>Worker payouts</h2><p>Record a transfer after the completed job has been paid.</p></div>
+    {% if unresolved_payout_count %}<span class="badge red">Needs reconciliation</span>{% elif pending_payout_total %}<span class="badge amber">Payment due</span>{% else %}<span class="badge green">Up to date</span>{% endif %}
+  </div>
+  {% for p in landlord_worker_payouts %}
+    <article class="landlord-payout-row">
+      <div class="landlord-payout-info">
+        <div class="payout-labels"><span class="badge {% if p.status == 'Paid' %}green{% elif p.status == 'Awaiting payment' %}amber{% elif p.status == 'Payout status unknown' or p.status == 'Review required' %}red{% endif %}">{{p.status}}</span><small>{{p.created_at|date:'M j, Y'}}</small></div>
+        <h3>{% if p.job %}<a href="/jobs/{{p.job_id}}/">{{p.job.title}}</a>{% else %}{{p.entity}}{% endif %}</h3>
+        <p>{% if p.job and p.job.property %}{{p.job.property.title}} · {% endif %}{% if p.user %}{{p.user.get_full_name|default:p.user.username}}{% else %}Worker account unavailable{% endif %}</p>
+        {% if p.paid_at %}<small>Paid {{p.paid_at|date:'M j, Y'}} by {{p.payment_method}}{% if p.payment_reference %} · Ref {{p.payment_reference}}{% endif %}</small>{% elif p.provider_result_description %}<small>{{p.provider_result_description}}</small>{% endif %}
+      </div>
+      <div class="landlord-payout-action">
+        <strong>KES {{p.amount|floatformat:2}}</strong>
+        {% if p.status == 'Awaiting payment' and p.job.status == 'Completed' %}
+          {% if b2c_enabled and p.user.profile.phone %}<form method="post" onsubmit="return confirm('Send KES {{p.amount}} to the worker at {{p.user.profile.phone}} using M-Pesa?');">{% csrf_token %}<input type="hidden" name="action" value="send_worker_payout"><input type="hidden" name="payment_id" value="{{p.id}}"><button class="btn small" type="submit">Send by M-Pesa</button></form>{% elif b2c_enabled %}<small>Worker needs an M-Pesa number.</small>{% endif %}
+          <details class="record-payout-details"><summary>Record a transfer</summary><form method="post">{% csrf_token %}<input type="hidden" name="action" value="mark_payout_paid"><input type="hidden" name="payment_id" value="{{p.id}}"><label>Paid by<select name="payment_method" required>{% for value,label in payment_methods %}<option value="{{value}}">{{label}}</option>{% endfor %}</select></label><label>Receipt / reference<input name="payment_reference" maxlength="100" placeholder="Required for M-Pesa"></label><button class="btn small" type="submit">Save payout</button></form></details>
+        {% elif p.status == 'Payout status unknown' %}<small>Confirm the transfer status before retrying.</small>{% else %}<small>{% if p.status == 'Paid' %}Payment recorded{% else %}Payout will be available after job completion{% endif %}</small>{% endif %}
+      </div>
+    </article>
+  {% empty %}
+    <div class="payment-empty-state"><span class="payment-empty-icon">✓</span><h3>No worker payouts</h3><p>Payouts are listed here after a worker completes an assigned job.</p></div>
+  {% endfor %}
+</section>
