@@ -267,3 +267,44 @@
 :root[data-theme="dark"] .heart,:root[data-theme="dark"] .faq details,:root[data-theme="dark"] .plan,:root[data-theme="dark"] .docs-page,:root[data-theme="dark"] .jobs-count,:root[data-theme="dark"] .job-card,:root[data-theme="dark"] .jobs-empty,:root[data-theme="dark"] .jobs-group-count,:root[data-theme="dark"] .profile-summary-card,:root[data-theme="dark"] .profile-form-card,:root[data-theme="dark"] .maintenance-card,:root[data-theme="dark"] .maintenance-empty,:root[data-theme="dark"] .maintenance-form-card,:root[data-theme="dark"] .account-stat,:root[data-theme="dark"] .account-activity,:root[data-theme="dark"] .account-settings,:root[data-theme="dark"] .home-role-card,:root[data-theme="dark"] .rent-payment-item,:root[data-theme="dark"] .stay-mode-tabs a,:root[data-theme="dark"] .account-role-card,:root[data-theme="dark"] .lease-overview-card,:root[data-theme="dark"] .lease-search-panel,:root[data-theme="dark"] .landlord-payment-metric,:root[data-theme="dark"] .payment-section-nav a{background-color:var(--surface);border-color:var(--line);color:var(--ink)}
 :root[data-theme="dark"] .jobs-group-count,:root[data-theme="dark"] .jobs-count{background:#202a22;color:var(--muted)}
 :root[data-theme="dark"] .payment-empty-state,:root[data-theme="dark"] .record-payout-details form{background:#202a22;border-color:var(--line)}
+
+/* Landlord portfolio pulse summary */
+.landlord-pulse{position:relative;isolation:isolate;overflow:hidden;margin:3px 0 24px;padding:25px;border:1px solid #dce8dc;border-radius:19px;background:radial-gradient(ellipse at 92% 0%,rgba(117,255,107,.15),transparent 31%),linear-gradient(135deg,#f0f7f0 0%,#f9fbf8 55%,#eef6ed 100%)}
+.landlord-pulse:after{position:absolute;z-index:-1;right:-75px;bottom:-185px;width:320px;height:320px;border:1px solid rgba(27,106,45,.07);border-radius:50%;box-shadow:0 0 0 28px rgba(27,106,45,.025),0 0 0 58px rgba(27,106,45,.02);content:""}
+.landlord-pulse-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:19px}
+.landlord-pulse-kicker{display:flex;align-items:center;gap:8px;color:#55745b;font-size:9px;font-weight:900;letter-spacing:1.4px}
+.landlord-pulse-kicker i{width:7px;height:7px;border-radius:50%;background:#35a54b;box-shadow:0 0 0 4px rgba(53,165,75,.12)}
+.landlord-pulse-heading h2{margin:8px 0 4px;font-size:23px;letter-spacing:-.6px}
+.landlord-pulse-heading p{margin:0;font-size:12px}
+.landlord-pulse-link{display:inline-flex;align-items:center;gap:9px;padding:9px 12px;border:1px solid #d7e3d7;border-radius:9px;background:rgba(255,255,255,.7);color:#276637;font-size:11px;font-weight:800;white-space:nowrap}
+.landlord-pulse-link span{font-size:15px}
+.landlord-pulse-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+.landlord-pulse-card{position:relative;display:grid;align-content:start;min-width:0;min-height:156px;padding:15px 16px 13px;overflow:hidden;border:1px solid rgba(216,229,217,.9);border-radius:14px;background:rgba(255,255,255,.87);box-shadow:0 5px 14px rgba(28,63,32,.035);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.landlord-pulse-card:hover{transform:translateY(-3px);border-color:#b8d5ba;box-shadow:0 12px 25px rgba(28,63,32,.09)}
+.landlord-pulse-card:before{position:absolute;top:0;right:0;left:0;height:3px;background:var(--pulse-accent,#369349);content:""}
+.pulse-properties{--pulse-accent:#348a47}
+.pulse-leases{--pulse-accent:#4b8bba}
+.pulse-attention{--pulse-accent:#d89b36}
+.pulse-income{--pulse-accent:#8365b6}
+.landlord-pulse-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.landlord-pulse-icon{display:grid;place-items:center;width:34px;height:34px;border:1px solid color-mix(in srgb,var(--pulse-accent) 18%,white);border-radius:10px;background:color-mix(in srgb,var(--pulse-accent) 9%,white);color:var(--pulse-accent)}
+.landlord-pulse-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.landlord-pulse-index{color:#9aaa9b;font:700 10px Manrope;letter-spacing:.5px}
+.landlord-pulse-label{color:#65746a;font-size:11px;font-weight:800}
+.landlord-pulse-value{display:block;margin:0 0 9px;color:#17291b;font:800 31px/1.1 Manrope;letter-spacing:-1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.landlord-pulse-value.pulse-currency{font-size:clamp(19px,2vw,26px);letter-spacing:-.7px}
+.landlord-pulse-card-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:auto;padding-top:10px;border-top:1px solid #edf1ed;color:#879389;font-size:9px;line-height:1.35}
+.landlord-pulse-card-foot b{color:var(--pulse-accent);font-size:14px}
+:root[data-theme="dark"] .landlord-pulse{border-color:#34483a;background:radial-gradient(ellipse at 92% 0%,rgba(67,137,78,.2),transparent 31%),linear-gradient(135deg,#1b291e,#18211a 55%,#202b22)}
+:root[data-theme="dark"] .landlord-pulse:after{border-color:rgba(160,211,166,.08);box-shadow:0 0 0 28px rgba(160,211,166,.025),0 0 0 58px rgba(160,211,166,.02)}
+:root[data-theme="dark"] .landlord-pulse-kicker{color:#a8c8ad}
+:root[data-theme="dark"] .landlord-pulse-link{border-color:#405247;background:#202a22;color:#b1e3b8}
+:root[data-theme="dark"] .landlord-pulse-card{border-color:#34463a;background:rgba(27,36,29,.9)}
+:root[data-theme="dark"] .landlord-pulse-card:hover{border-color:#527357}
+:root[data-theme="dark"] .landlord-pulse-icon{border-color:color-mix(in srgb,var(--pulse-accent) 30%,#1b241d);background:color-mix(in srgb,var(--pulse-accent) 15%,#1b241d)}
+:root[data-theme="dark"] .landlord-pulse-index,:root[data-theme="dark"] .landlord-pulse-card-foot{color:#9aa99d}
+:root[data-theme="dark"] .landlord-pulse-value{color:#edf3ee}
+:root[data-theme="dark"] .landlord-pulse-card-foot{border-color:#344137}
+@media(max-width:1000px){.landlord-pulse-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.landlord-pulse{padding:18px 14px;border-radius:15px}.landlord-pulse-heading{align-items:flex-start;flex-direction:column;gap:12px}.landlord-pulse-grid{gap:8px}.landlord-pulse-card{min-height:148px;padding:13px 12px 11px}.landlord-pulse-card-top{margin-bottom:9px}.landlord-pulse-value{font-size:27px}.landlord-pulse-value.pulse-currency{font-size:20px}.landlord-pulse-card-foot{font-size:8px}}
+@media(max-width:360px){.landlord-pulse-grid{grid-template-columns:1fr}.landlord-pulse-card{min-height:135px}}
