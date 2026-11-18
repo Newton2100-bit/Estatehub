@@ -173,6 +173,7 @@ class Lease(models.Model):
     start_date=models.DateField()
     end_date=models.DateField()
     rent=models.DecimalField(max_digits=10,decimal_places=2)
+    deposit_amount=models.DecimalField(max_digits=10,decimal_places=2,default=0)
     rent_due_day=models.PositiveSmallIntegerField(default=1,validators=[MinValueValidator(1),MaxValueValidator(31)])
     status=models.CharField(max_length=30,default="Active")
     document_name=models.CharField(max_length=180,default="Original Lease Agreement.pdf")
