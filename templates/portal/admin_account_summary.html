@@ -1,0 +1,21 @@
+<section class="panel account-role-summary">
+  <div class="account-role-heading">
+    <div>
+      <div class="eyebrow">ACCOUNT DIRECTORY</div>
+      <h2>Accounts by role</h2>
+      <p>Review the people who use EstateHub and open a role to manage its accounts.</p>
+    </div>
+    <div class="account-role-tools">
+      <span class="account-total-chip">{{counts.users}} total accounts</span>
+      <a href="/admin/core/profile/">Manage profiles <span aria-hidden="true">→</span></a>
+    </div>
+  </div>
+  <div class="account-role-grid">
+    <a class="account-role-card role-tenant" href="/admin/core/profile/?role__exact=tenant"><span class="account-role-icon">T</span><span class="account-role-name">Tenants</span><strong>{{counts.tenants}}</strong><small>Renting homes</small><span class="account-role-arrow" aria-hidden="true">↗</span></a>
+    <a class="account-role-card role-landlord" href="/admin/core/profile/?role__exact=landlord"><span class="account-role-icon">L</span><span class="account-role-name">Landlords</span><strong>{{counts.landlords}}</strong><small>Property owners</small><span class="account-role-arrow" aria-hidden="true">↗</span></a>
+    <a class="account-role-card role-worker" href="/admin/core/profile/?role__exact=worker"><span class="account-role-icon">W</span><span class="account-role-name">Workers</span><strong>{{counts.workers}}</strong><small>Service professionals</small><span class="account-role-arrow" aria-hidden="true">↗</span></a>
+    <a class="account-role-card role-caretaker" href="/admin/core/profile/?role__exact=management"><span class="account-role-icon">C</span><span class="account-role-name">Caretakers</span><strong>{{counts.caretakers}}</strong><small>Property management</small><span class="account-role-arrow" aria-hidden="true">↗</span></a>
+    <a class="account-role-card role-admin" href="/admin/core/profile/?role__exact=admin"><span class="account-role-icon">A</span><span class="account-role-name">Admins</span><strong>{{counts.admins}}</strong><small>Platform administrators</small><span class="account-role-arrow" aria-hidden="true">↗</span></a>
+  </div>
+  <a class="account-role-other" href="/admin/auth/user/"><span class="account-other-icon">?</span><span><b>Other or unassigned accounts</b><small>Accounts without a recognized EstateHub role</small></span><strong>{{counts.other_accounts}}</strong><span class="account-role-arrow" aria-hidden="true">↗</span></a>
+</section>
