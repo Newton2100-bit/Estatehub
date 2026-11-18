@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Notifications — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav">
+    <a class="brand" href="/">Estate<span>Hub</span></a>
+    <nav><a href="/dashboard/">Dashboard</a><a class="active" href="/notifications/">Notifications{% if unread_notification_count %} ({{unread_notification_count}}){% endif %}</a></nav>
+    <a href="/profile/">My account</a>
+  </header>
+  <main class="public wrap notification-page">
+    <div class="page-head"><div><div class="eyebrow">ACCOUNT UPDATES</div><h1>Notifications</h1><p>Review account decisions and activity that needs your attention.</p></div>
+      {% if unread_notification_count %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="mark_all_read"><button class="btn ghost" type="submit">Mark all as read</button></form>{% endif %}
+    </div>
+    <section class="panel notification-list">
+      {% for item in notifications %}
+        <article class="notification-item {% if not item.read %}is-unread{% endif %}">
+          <span class="notification-dot" aria-hidden="true"></span>
+          <div class="notification-copy"><p>{{item.text}}</p><small>{{item.created_at|date:'M d, Y · g:i A'}}</small></div>
+          <div class="notification-actions">
+            {% if item.url %}<a class="btn ghost small" href="/notifications/{{item.id}}/open/">Open</a>{% endif %}
+            {% if not item.read %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="mark_read"><input type="hidden" name="notification_id" value="{{item.id}}"><button class="notification-mark-read" type="submit">Mark read</button></form>{% endif %}
+          </div>
+        </article>
+      {% empty %}
+        <div class="notification-empty"><span>✓</span><h2>You’re all caught up</h2><p>Review updates will appear here when something needs your attention.</p></div>
+      {% endfor %}
+    </section>
+  </main>
+</div>
+{% endblock %}
