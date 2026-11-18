@@ -690,6 +690,19 @@ def edit_rental_unit(request, pk):
 
 @role_required("landlord", "admin")
 def review_application(request, application_id, decision):
+    if request.method == "GET" and decision == "approve":
+        application = get_object_or_404(
+            RentalApplication.objects.select_related("property", "unit", "tenant"),
+            pk=application_id,
+        )
+        if current_role(request.user) != "admin" and application.property.owner_id != request.user.id:
+            raise PermissionDenied
+        if application.status != "Pending" or application.property.status != "Available" or (
+            application.unit_id and application.unit.status != "Available"
+        ):
+            messages.info(request, "This application is no longer pending for an available home.")
+            return redirect("dashboard_home")
+        return render(request, "portal/confirm_application_approval.html", {"application": application})
     if request.method != "POST" or decision not in {"approve", "reject"}:
         raise PermissionDenied
     application = get_object_or_404(RentalApplication.objects.select_related("property", "unit"), pk=application_id)
