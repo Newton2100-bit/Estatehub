@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}EstateHub — Find a home. Manage it. Keep it running.{% endblock %}
+{% block body %}
+<header class="nav home-nav">
+	<a class="brand" href="/">Estate<span>Hub</span></a>
+	<nav><a href="/properties/">Homes</a><a href="#how-it-works">How it works</a><a href="/support/">Help</a></nav>
+	<div class="nav-actions">
+		{% if request.user.is_authenticated %}<a href="/dashboard/">Dashboard</a><a class="btn small" href="/logout/">Sign out</a>
+		{% else %}<a href="/login/">Sign in</a><a class="btn small" href="/register/">Get started</a>{% endif %}
+	</div>
+</header>
+<main>
+	<section class="home-hero wrap">
+		<div class="home-hero-copy">
+			<div class="eyebrow">RENTALS AND PROPERTY CARE</div>
+			<h1>Find a home.<br>Manage it <span>together.</span></h1>
+			<p>Browse rentals, manage properties, and get repairs moving with one connected workspace.</p>
+			<div class="actions"><a class="btn" href="/properties/">Browse homes <span aria-hidden="true">→</span></a><a class="btn ghost" href="/register/">Create an account</a></div>
+			<small class="home-hero-note">For tenants, landlords, and local service workers.</small>
+		</div>
+		<div class="home-visual">
+			<img src="{% static 'images/demo-apartment-exterior.jpg' %}" alt="Illustrative apartment building">
+			<span class="home-photo-label">Illustrative photo</span>
+			<div class="home-visual-card"><span class="home-visual-icon">✓</span><div><b>Repair, tracked</b><small>Report · Assign · Resolve</small></div></div>
+		</div>
+	</section>
+
+	<section class="home-roles wrap" aria-label="EstateHub services">
+		<div class="home-section-heading"><div class="eyebrow">ONE PLATFORM, THREE WORKSPACES</div><h2>Everything has a place.</h2></div>
+		<div class="home-role-grid">
+			<a class="home-role-card" href="/properties/"><span class="home-role-icon">⌂</span><span><b>Find a rental</b><small>Browse homes, apply, manage your lease, and report repairs.</small></span><span class="home-role-arrow">→</span></a>
+			<a class="home-role-card" href="/register/"><span class="home-role-icon">▦</span><span><b>Manage properties</b><small>Post listings, review applications, and coordinate maintenance.</small></span><span class="home-role-arrow">→</span></a>
+			<a class="home-role-card" href="/jobs/"><span class="home-role-icon">✓</span><span><b>Find repair work</b><small>Browse available jobs and keep tenants updated.</small></span><span class="home-role-arrow">→</span></a>
+		</div>
+	</section>
+
+	<section class="home-process" id="how-it-works">
+		<div class="wrap home-process-inner"><div><div class="eyebrow">A CLEAR PROCESS</div><h2>From listing to looked-after.</h2></div>
+			<div class="home-steps"><div><b>01</b><span>List and review</span></div><div><b>02</b><span>Apply and rent</span></div><div><b>03</b><span>Report and repair</span></div></div>
+		</div>
+	</section>
+</main>
+<footer class="home-footer wrap"><a class="brand" href="/">Estate<span>Hub</span></a><span>M-Pesa payments are available when configured for your account.</span><a href="/login/">Admin sign in</a><a href="/support/">Help</a><span>© {% now 'Y' %} EstateHub</span></footer>
+{% endblock %}
