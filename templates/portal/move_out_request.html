@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Move-out request — EstateHub{% endblock %}
+{% block title %}Request a renewal or move-out — EstateHub{% endblock %}
 {% block body %}
 <div class="app-lite">
   <header class="nav">
@@ -10,8 +10,8 @@
   <main class="public narrow moveout-page">
     <a class="back" href="/leases/">← Back to my leases</a>
     <div class="eyebrow">LEASE CHANGE</div>
-    <h1>Move-out request</h1>
-    <p class="lead">Request to end your monthly lease. Your landlord will review the requested date and message.</p>
+    <h1>Request a renewal or move-out</h1>
+    <p class="lead">Your lease renews automatically every month. You only need to submit a request if you plan to move out.</p>
 
     <section class="panel moveout-property-card">
       <div class="eyebrow">YOUR RENTAL</div>
@@ -22,6 +22,12 @@
         <div><strong>{{current_term_end|date:'M d, Y'}}</strong><span>Current term ends</span></div>
         <div><strong>KES {{lease.rent|floatformat:2}}</strong><span>Monthly rent</span></div>
       </div>
+    </section>
+
+    <section class="panel renewal-info-card">
+      <span class="badge green">Monthly auto-renewal</span>
+      <h2>No renewal request needed</h2>
+      <p>Your active lease continues each month unless you and your landlord approve a move-out date.</p>
     </section>
 
     {% if approved_moveout %}
@@ -53,7 +59,7 @@
             <textarea name="message" rows="8" maxlength="4000" placeholder="Share your plans, any questions, or details the landlord should know."></textarea>
           </label>
           <p class="moveout-help">Submitting this request does not end the lease automatically. Rent remains due under the lease until the move-out is approved.</p>
-          <div class="actions"><button class="btn" type="submit">Send move-out request</button><a class="btn ghost" href="/leases/">Cancel</a></div>
+          <div class="actions"><button class="btn" type="submit">Submit move-out request</button><a class="btn ghost" href="/leases/">Cancel</a></div>
         </form>
       </section>
     {% endif %}
