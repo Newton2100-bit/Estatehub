@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Submit a Property — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav property-submit-nav">
+    <a class="brand" href="/">Estate<span>Hub</span></a>
+    <nav><a href="/dashboard/">Dashboard</a><a class="active" href="/submit-property/">Add property</a></nav>
+    <a href="/logout/">Sign out</a>
+  </header>
+  <main class="public narrow property-submit-page">
+    <div class="property-submit-heading">
+      <div class="eyebrow">LANDLORD PORTAL <span>·</span> NEW LISTING</div>
+      <h1>Submit a building</h1>
+      <p>Choose whether guests will rent this property by the month or request short stays by the night. You can manage each unit, price, and guest booking from your property page.</p>
+    </div>
+    <div class="property-review-note"><span class="property-review-icon">✓</span><span><b>Admin review before publishing</b><small>After submission, an administrator will review the listing before it appears to tenants.</small></span></div>
+    <section class="panel property-submit-card">
+      <div class="property-submit-card-heading"><span class="property-submit-icon">⌂</span><div><h2>Property details</h2><p>First choose the way customers will book this property. You can attach up to 8 property photos.</p></div></div>
+      <div class="rental-mode-explainer"><article><b>Apartment / long-term</b><span>Monthly rent, tenant applications, and leases for each unit.</span></article><article><b>Short stay / Airbnb</b><span>Nightly prices, date-based booking requests, host approval, and guest check-in/check-out tracking.</span></article></div>
+      <form method="post" enctype="multipart/form-data" class="property-submit-form">
+        {% csrf_token %}
+        {% include 'portal/_kenya_counties.html' %}
+        <div class="property-submit-fields">{{form.as_p}}</div>
+        <div class="property-submit-actions"><span>Your changes will be saved for admin review.</span><button class="btn" type="submit">Submit for admin review <span aria-hidden="true">→</span></button></div>
+      </form>
+    </section>
+    <a class="property-submit-back" href="/dashboard/">← Back to dashboard</a>
+  </main>
+</div>
+<script>
+  (() => {
+    const mode = document.getElementById('id_rental_mode');
+    const rent = document.getElementById('id_rent');
+    if (!mode || !rent) return;
+    const label = document.querySelector('label[for="id_rent"]');
+    const help = document.getElementById('id_rent_helptext');
+    const refreshPriceLabel = () => {
+      const shortStay = mode.value === 'short_stay';
+      if (label && label.firstChild) label.firstChild.textContent = shortStay ? 'Starting nightly price (KES)' : 'Starting monthly rent (KES)';
+      if (help) help.textContent = shortStay ? 'Price per night for the first stay unit. Customers choose dates and the host approves each booking request.' : 'Starting monthly price for the first unit. Add or edit floors and unit prices from your property page.';
+    };
+    mode.addEventListener('change', refreshPriceLabel);
+    refreshPriceLabel();
+  })();
+</script>
+{% endblock %}
