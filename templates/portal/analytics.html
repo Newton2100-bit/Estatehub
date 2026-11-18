@@ -1,1 +1,60 @@
-{% extends 'base.html' %}{% block body %}<div class="app-lite"><header class="nav"><a class="brand" href="/">Estate<span>Hub</span></a><nav><a href="/dashboard/">Dashboard</a><a class="active" href="/analytics/">Portfolio</a><a href="/properties/">Properties</a><a href="/payments/">Rent ledger</a></nav><a href="/logout/">Logout</a></header><main class="public wrap"><div class="page-head"><div><div class="eyebrow">PORTFOLIO OVERVIEW</div><h1>Property performance</h1><p>Current counts and rent entries recorded in EstateHub.</p></div></div><div class="metric-grid"><div class="metric"><small>Properties</small><strong>{{property_count}}</strong></div><div class="metric"><small>Active leases</small><strong>{{active_lease_count}}</strong></div><div class="metric"><small>Open complaints</small><strong>{{unresolved_request_count}}</strong></div><div class="metric"><small>Rent records total</small><strong>${{recorded_total|floatformat:2}}</strong><span>Ledger entries; no payment processor connected</span></div></div><section class="panel"><div class="panel-head"><h2>Portfolio listings</h2><a href="/properties/">Marketplace</a></div><table><thead><tr><th>Property</th><th>Location</th><th>Rent</th><th>Status</th></tr></thead><tbody>{% for property in properties %}<tr><td>{{property.title}}</td><td>{{property.city}}</td><td>KES {{property.rent}}</td><td>{{property.get_status_display}}</td></tr>{% empty %}<tr><td colspan="4">No properties in this portfolio.</td></tr>{% endfor %}</tbody></table></section><section class="panel"><div class="panel-head"><h2>Recent recorded payments</h2><a href="/payments/">View ledger</a></div>{% for payment in payments|slice:':8' %}<p>{{payment.entity}} · ${{payment.amount}} · {{payment.status}}</p>{% empty %}<p>No payment records yet.</p>{% endfor %}</section></main></div>{% endblock %}
+{% extends 'dashboards/_shell.html' %}
+{% block title %}Portfolio Analytics{% endblock %}
+{% block dashboard %}
+<div class="analytics-page">
+  <div class="page-head analytics-page-head">
+    <div><div class="eyebrow">PORTFOLIO INTELLIGENCE</div><h1>Property analytics</h1><p>A clear view of occupancy, rent collected, and what needs attention across your portfolio.</p></div>
+    <div class="analytics-head-actions"><a class="btn ghost" href="/reports/">Open reports</a><a class="btn" href="/properties/">Manage properties</a></div>
+  </div>
+
+  <div class="analytics-kpis">
+    <article class="analytics-kpi analytics-kpi-primary"><span class="analytics-kpi-icon">↗</span><small>Rent collected · all time</small><strong>KES {{ rent_collected|floatformat:0 }}</strong><span>Successful rent payment records</span></article>
+    <article class="analytics-kpi"><span class="analytics-kpi-icon">⌂</span><small>Properties</small><strong>{{ property_count }}</strong><span>Across your portfolio</span></article>
+    <article class="analytics-kpi"><span class="analytics-kpi-icon">◉</span><small>Unit occupancy</small><strong>{{ occupancy_rate }}%</strong><span>{{ rented_units }} of {{ total_units }} units rented</span></article>
+    <article class="analytics-kpi"><span class="analytics-kpi-icon">!</span><small>Needs attention</small><strong>{{ unresolved_request_count|add:pending_application_count }}</strong><span>{{ unresolved_request_count }} maintenance · {{ pending_application_count }} applications</span></article>
+  </div>
+
+  <div class="analytics-main-grid">
+    <section class="panel analytics-chart-card analytics-revenue-card">
+      <div class="analytics-card-heading"><div><div class="eyebrow">CASH FLOW</div><h2>Rent collected</h2><p>Successful rent payments recorded over the last six months.</p></div><div class="analytics-total"><strong>KES {{ month_total|floatformat:0 }}</strong><span>Last 6 months</span></div></div>
+      <div class="analytics-chart-wrap">
+        <div class="analytics-y-labels"><span>High</span><span>Mid</span><span>Low</span></div>
+        <svg class="analytics-line-chart" viewBox="0 0 600 226" role="img" aria-label="Monthly rent collected for the last six months">
+          <defs><linearGradient id="revenueFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#167a32" stop-opacity=".22"/><stop offset="100%" stop-color="#167a32" stop-opacity="0"/></linearGradient></defs>
+          <line x1="20" y1="34" x2="580" y2="34" class="analytics-gridline"/><line x1="20" y1="105" x2="580" y2="105" class="analytics-gridline"/><line x1="20" y1="176" x2="580" y2="176" class="analytics-gridline"/>
+          <polygon points="{{ area_points }}" class="analytics-chart-area"/><polyline points="{{ line_points }}" class="analytics-chart-line"/>
+          {% for point in chart_points %}<circle cx="{{ point.x }}" cy="{{ point.y }}" r="4.5" class="analytics-chart-point"><title>{{ point.label }}: KES {{ point.amount|floatformat:0 }}</title></circle><text x="{{ point.x }}" y="211" text-anchor="middle" class="analytics-chart-label">{{ point.label }}</text>{% endfor %}
+        </svg>
+      </div>
+      <div class="analytics-trend-note">{% if trend_percent != None %}{% if trend_percent >= 0 %}<span class="trend-up">↗ {{ trend_percent|floatformat:1 }}%</span>{% else %}<span class="trend-down">↘ {{ trend_percent|floatformat:1 }}%</span>{% endif %}<span>Compared with the previous three months</span>{% else %}<span>Not enough payment history yet to compare periods.</span>{% endif %}</div>
+    </section>
+
+    <section class="panel analytics-chart-card analytics-status-card">
+      <div class="analytics-card-heading"><div><div class="eyebrow">PORTFOLIO MIX</div><h2>Listing status</h2><p>How your properties are currently distributed.</p></div></div>
+      <div class="analytics-donut-layout">
+        <div class="analytics-donut" style="background:{{ status_pie_style }}" role="img" aria-label="Property listing status distribution"><div><strong>{{ property_count }}</strong><span>properties</span></div></div>
+        <div class="analytics-legend">{% for item in status_distribution %}<div class="analytics-legend-item"><span class="analytics-legend-label"><i style="background:{{ item.color }}"></i>{{ item.label }}</span><strong>{{ item.count }} <small>{{ item.percent }}%</small></strong></div>{% empty %}<p>No property listings to chart yet.</p>{% endfor %}</div>
+      </div>
+      <div class="analytics-status-callout"><span>Available rental units</span><strong>{{ available_units }} <small>of {{ total_units }}</small></strong></div>
+    </section>
+  </div>
+
+  <div class="analytics-lower-grid">
+    <section class="panel analytics-breakdown-card">
+      <div class="analytics-card-heading"><div><div class="eyebrow">LEASING</div><h2>Active leases by property</h2><p>Properties with the most active tenancies.</p></div><span class="analytics-inline-total">{{ active_lease_count }} active</span></div>
+      {% for property in top_properties %}<a class="analytics-property-bar-row" href="/property/{{ property.id }}/"><span class="analytics-property-bar-name">{{ property.title }}<small>{{ property.location }}</small></span><span class="analytics-property-bar-track"><i style="width:{{ property.lease_bar_width }}%"></i></span><strong>{{ property.active_lease_count }}</strong></a>{% empty %}<div class="analytics-empty">Add properties and leases to see your portfolio performance here.</div>{% endfor %}
+      {% if top_properties %}<a class="analytics-text-link" href="/leases/">View lease records <span>→</span></a>{% endif %}
+    </section>
+    <section class="panel analytics-insight-card">
+      <div class="eyebrow">PORTFOLIO SNAPSHOT</div><h2>At a glance</h2>
+      <div class="analytics-insight-row"><span class="analytics-insight-icon green">✓</span><div><strong>{{ active_lease_count }} active leases</strong><p>Current tenancies across your properties.</p></div></div>
+      <div class="analytics-insight-row"><span class="analytics-insight-icon amber">⌁</span><div><strong>{{ available_units }} units available</strong><p>Units currently marked available to rent.</p></div></div>
+      <div class="analytics-insight-row"><span class="analytics-insight-icon red">!</span><div><strong>{{ unresolved_request_count }} open maintenance requests</strong><p>Unresolved reports may need follow-up.</p></div></div>
+      <div class="analytics-insight-row"><span class="analytics-insight-icon blue">◷</span><div><strong>{{ pending_application_count }} applications awaiting review</strong><p>Applicant decisions are ready in your dashboard.</p></div></div>
+      <a class="btn ghost analytics-insight-action" href="/dashboard/">Go to landlord dashboard</a>
+    </section>
+  </div>
+
+  <div class="analytics-footnote">Figures are based on records entered in EstateHub. Rent totals include successful rent payment records only; they do not represent external bank balances.</div>
+</div>
+{% endblock %}
