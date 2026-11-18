@@ -30,13 +30,13 @@
       </a>
       <a class="landlord-pulse-card pulse-attention" href="/maintenance/">
         <span class="landlord-pulse-card-top"><span class="landlord-pulse-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 19a1.4 1.4 0 0 0 1.2 2h16a1.4 1.4 0 0 0 1.2-2L12 3Zm0 6v5m0 3.2v.2"/></svg></span><span class="landlord-pulse-index">03</span></span>
-        <span class="landlord-pulse-label">Needs attention</span><strong class="landlord-pulse-value">{{ open_complaint_count|add:pending_application_count }}</strong>
-        <span class="landlord-pulse-card-foot"><span>{{ open_complaint_count }} maintenance · {{ pending_application_count }} applications</span><b>↗</b></span>
+        <span class="landlord-pulse-label">Maintenance reports</span><strong class="landlord-pulse-value">{{ requests|length }}</strong>
+        <span class="landlord-pulse-card-foot"><span>Reports across your portfolio</span><b>↗</b></span>
       </a>
       <a class="landlord-pulse-card pulse-income" href="/payments/">
         <span class="landlord-pulse-card-top"><span class="landlord-pulse-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20m5-15.5c-.7-1-2-1.5-4.5-1.5-2.8 0-4.5 1.1-4.5 3s1.5 2.8 4.5 3.5 4.5 1.6 4.5 3.5-1.7 3-4.5 3c-2.5 0-3.8-.5-4.5-1.5"/></svg></span><span class="landlord-pulse-index">04</span></span>
-        <span class="landlord-pulse-label">Rental income</span><strong class="landlord-pulse-value pulse-currency">KES {{ rental_income_total|floatformat:0 }}</strong>
-        <span class="landlord-pulse-card-foot"><span>{{ successful_rental_payment_count }} successful payment records</span><b>↗</b></span>
+        <span class="landlord-pulse-label">Rent records</span><strong class="landlord-pulse-value">{{ payments|length }}</strong>
+        <span class="landlord-pulse-card-foot"><span>Payment history on your leases</span><b>↗</b></span>
       </a>
     </div>
   </section>
