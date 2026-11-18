@@ -1,0 +1,17 @@
+{% extends 'dashboards/_shell.html' %}
+{% block title %}
+Admin Portal{% endblock %}
+{% block dashboard %}
+<div class="page-head"><div><div class="eyebrow">ADMIN PORTAL</div><h1>Platform oversight</h1><p>Review accounts and listings, and monitor activity across EstateHub.</p></div><a class="btn" href="/oversight/">Open review queue</a></div><div class="metric-grid"><div class="metric"><small>Registered users</small><strong>{{counts.users}}</strong></div><div class="metric"><small>Properties</small><strong>{{counts.properties}}</strong></div><div class="metric"><small>Active leases</small><strong>{{counts.leases}}</strong></div><div class="metric"><small>Unresolved complaints</small><strong>{{counts.open_requests}}</strong></div></div>{% include 'portal/admin_account_summary.html' %}<div class="content-grid"><section class="panel"><div class="panel-head"><h2>Recent complaints</h2><a href="/oversight/">Open oversight</a></div>{% for r in requests|slice:':6' %}
+		<p><span class="badge {% if r.priority == 'Urgent' %}
+				red{% else %}
+				amber{% endif %}
+				">{{r.priority}}</span> <b>{{r.title}}</b> · {{r.status}}<br><small>At {{r.property.title|default:r.property_name}}{% if r.unit_id %} · Floor {{r.unit.floor.number}} · Unit {{r.unit.unit_number}}{% else %} · House not recorded{% endif %}{% if r.requester %} · Reported by {{r.requester.get_full_name|default:r.requester.username}}{% endif %}</small></p>{% empty %}
+			<p>No complaints recorded.</p>{% endfor %}
+	</section><section class="panel"><div class="panel-head"><h2>Worker jobs</h2><a href="/jobs/">View jobs</a></div>{% for j in jobs|slice:':6' %}
+		<p><b>{{j.title}}</b> · {{j.status}}{% if j.worker %}
+		· {{j.worker.username}}{% endif %}
+		</p>{% empty %}
+		<p>No worker jobs posted.</p>{% endfor %}
+	</section></div>
+	{% endblock %}
