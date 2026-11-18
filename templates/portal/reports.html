@@ -1,0 +1,27 @@
+{% extends 'dashboards/_shell.html' %}
+{% block title %}{{ role|title }} Reports · EstateHub{% endblock %}
+{% block dashboard %}
+<div class="page-head report-page-head">
+  <div><div class="eyebrow">{{ role|title }} REPORTS</div><h1>Your activity, clearly.</h1><p>Review the records you can access for the selected period. Amounts reflect entries recorded in EstateHub.</p></div>
+  <a class="btn ghost" href="?from={{ report_start_value }}&amp;to={{ report_end_value }}&amp;export=csv">Download CSV</a>
+</div>
+<form class="report-filter panel" method="get" aria-label="Choose report date range">
+  <label>From<input type="date" name="from" value="{{ report_start_value }}" required></label>
+  <label>To<input type="date" name="to" value="{{ report_end_value }}" required></label>
+  <button class="btn" type="submit">Update report</button>
+  <span>Showing {{ report_start|date:'M j, Y' }} – {{ report_end|date:'M j, Y' }}</span>
+</form>
+<section class="metric-grid report-metrics" aria-label="Report summary">
+  {% for item in cards %}<article class="metric"><small>{{ item.label }}</small><strong>{% if 'rent' in item.label|lower or 'collected' in item.label|lower or 'paid' in item.label|lower or 'payout' in item.label|lower %}KES {% endif %}{{ item.display_value }}</strong>{% if item.note %}<span>{{ item.note }}</span>{% endif %}</article>{% endfor %}
+</section>
+{% for item in tables %}
+<section class="panel report-table-panel">
+  <div class="panel-head"><h2>{{ item.title }}</h2><span>{{ item.rows|length }} record{{ item.rows|length|pluralize }}</span></div>
+  <div class="table-scroll"><table class="report-table"><caption class="sr-only">{{ item.title }} for {{ role }} from {{ report_start|date:'M j, Y' }} to {{ report_end|date:'M j, Y' }}</caption>
+    <thead><tr>{% for heading in item.headers %}<th scope="col">{{ heading }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for row in item.rows %}<tr>{% for cell in row %}<td>{{ cell|default:'—' }}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ item.headers|length }}" class="report-empty">No records for this period.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endfor %}
+<p class="report-footnote">This report reflects information currently recorded in your EstateHub account. Payment totals include completed ledger entries only.</p>
+{% endblock %}
