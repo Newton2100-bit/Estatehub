@@ -1,0 +1,152 @@
+#header {
+  box-shadow: 0 2px 12px rgba(13, 39, 17, 0.12);
+}
+
+html[data-theme],
+:root {
+  --primary: #006e0f;
+  --secondary: #07551a;
+  --accent: #75ff6b;
+  --primary-fg: #fff;
+  --body-fg: #132016;
+  --body-bg: #f6f8f5;
+  --body-quiet-color: #66736a;
+  --body-medium-color: #445248;
+  --body-loud-color: #132016;
+  --header-color: #fff;
+  --header-branding-color: #75ff6b;
+  --header-bg: #07551a;
+  --header-link-color: #fff;
+  --breadcrumbs-fg: #355c39;
+  --breadcrumbs-link-fg: #07551a;
+  --breadcrumbs-bg: #e9f8e7;
+  --link-fg: #006e0f;
+  --link-hover-color: #004f0b;
+  --link-selected-fg: #07551a;
+  --hairline-color: #e3e9e2;
+  --border-color: #d4ddd3;
+  --darkened-bg: #f0f4ef;
+  --selected-bg: #e5f5e2;
+  --selected-row: #eff9ed;
+  --button-fg: #fff;
+  --button-bg: #006e0f;
+  --button-hover-bg: #00580c;
+  --default-button-bg: #07551a;
+  --default-button-hover-bg: #006e0f;
+  --close-button-bg: #66736a;
+  --close-button-hover-bg: #445248;
+  --message-success-bg: #e5f5e2;
+  --message-warning-bg: #fff5dc;
+}
+
+body {
+  background: #f6f8f5;
+  color: #132016;
+}
+
+#header a:link,
+#header a:visited,
+#branding h1,
+#branding h1 a {
+  color: #fff;
+}
+
+#branding h1 a {
+  font-family: Manrope, "Segoe UI", sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+#user-tools a:hover,
+#header a:hover {
+  color: #75ff6b;
+}
+
+#content {
+  border-radius: 16px;
+}
+
+#content h1,
+#content h2,
+#content h3,
+#content h4 {
+  color: #132016;
+}
+
+#nav-sidebar {
+  background: #fff;
+  border-right: 1px solid #e3e9e2;
+}
+
+#nav-sidebar .current-model {
+  background: #e9f8e7;
+}
+
+div.breadcrumbs {
+  border-bottom: 1px solid #dce8da;
+}
+
+input,
+select,
+textarea,
+.selector select {
+  border: 1px solid #d4ddd3;
+  border-radius: 8px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #006e0f;
+  outline: 2px solid rgba(0, 110, 15, 0.15);
+}
+
+input[type="submit"],
+button,
+.submit-row input,
+a.button {
+  border-radius: 8px;
+}
+
+tr:hover td,
+tr:hover th {
+  background: #f2f8f0;
+}
+
+#content {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 24px 32px;
+}
+
+#content-main {
+  float: none;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+#content-related {
+  float: none;
+  width: 100%;
+  max-width: 1040px;
+  margin: 24px auto 0;
+}
+
+body.login #content {
+  max-width: 480px;
+  padding-top: 48px;
+}
+
+body.login #content-main {
+  max-width: 420px;
+}
+
+@media (max-width: 767px) {
+  #content {
+    padding: 18px 14px;
+  }
+}
