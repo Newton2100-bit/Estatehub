@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Review {{property.title}} — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav"><a class="brand" href="/">Estate<span>Hub</span></a><nav><a href="/dashboard/">Dashboard</a><a class="active" href="/oversight/">Review queue</a><a href="/admin/">Manage records</a></nav><a href="/logout/">Sign out</a></header>
+  <main class="public wrap approval-confirm-page">
+    <a class="back" href="/oversight/">← Back to review queue</a>
+    <section class="panel approval-confirm-card">
+      <div class="eyebrow">PROPERTY REVIEW</div>
+      <span class="badge amber">Pending admin review</span>
+      <h1>Approve this listing?</h1>
+      <p>It will become visible to customers once published.</p>
+      <div class="approval-property-summary">
+        {% with cover=property.images.first %}{% if cover %}<img src="{{cover.image.url}}" alt="Photo of {{property.title}}">{% endif %}{% endwith %}
+        <div><h2>{{property.title}}</h2><p>{{property.location}} · {{property.city}} · {{property.property_type}}</p><p>{% if property.rental_mode == 'short_stay' %}Short stay · Nightly rate{% else %}Apartment · Monthly rent{% endif %}: <strong>KES {{property.rent|floatformat:2}}</strong></p><p>Submitted by {% if property.owner %}{{property.owner.get_full_name|default:property.owner.username}}{% else %}EstateHub{% endif %}</p></div>
+      </div>
+      <form method="post" action="/oversight/properties/{{property.id}}/approve/" class="approval-confirm-actions">{% csrf_token %}<a class="btn ghost" href="/oversight/">Review later</a><button class="btn" type="submit">Approve and publish listing</button></form>
+    </section>
+  </main>
+</div>
+{% endblock %}
