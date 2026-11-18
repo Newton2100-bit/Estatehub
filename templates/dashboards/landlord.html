@@ -15,12 +15,31 @@
 {% elif rejected_landlord %}
   <section class="panel"><span class="badge red">Account not approved</span><h2>Your landlord account was not approved.</h2><p>Open your notification for the review decision and contact support if you need help.</p><a class="btn ghost" href="/notifications/">View notification</a></section>
 {% else %}
-  <div class="metric-grid">
-    <div class="metric"><small>My properties</small><strong>{{ properties|length }}</strong></div>
-    <div class="metric"><small>Active leases</small><strong>{{ leases|length }}</strong></div>
-    <div class="metric"><small>Open complaints</small><strong>{{ requests|length }}</strong><a href="/maintenance/">Review reports</a></div>
-    <div class="metric"><small>Rent records</small><strong>{{ payments|length }}</strong></div>
-  </div>
+  <section class="landlord-pulse" aria-labelledby="landlord-pulse-title">
+    <div class="landlord-pulse-heading"><div><span class="landlord-pulse-kicker"><i></i> YOUR OWNER SNAPSHOT</span><h2 id="landlord-pulse-title">Portfolio pulse</h2><p>A quick read on your homes, tenants, and income.</p></div><a class="landlord-pulse-link" href="/reports/">Explore reports <span>↗</span></a></div>
+    <div class="landlord-pulse-grid">
+      <a class="landlord-pulse-card pulse-properties" href="/properties/">
+        <span class="landlord-pulse-card-top"><span class="landlord-pulse-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg></span><span class="landlord-pulse-index">01</span></span>
+        <span class="landlord-pulse-label">My properties</span><strong class="landlord-pulse-value">{{ properties|length }}</strong>
+        <span class="landlord-pulse-card-foot"><span>Homes in your portfolio</span><b>↗</b></span>
+      </a>
+      <a class="landlord-pulse-card pulse-leases" href="/leases/">
+        <span class="landlord-pulse-card-top"><span class="landlord-pulse-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v15l-6-3-6 3V6a2 2 0 0 1 2-2Zm2 5h4m-4 4h4"/></svg></span><span class="landlord-pulse-index">02</span></span>
+        <span class="landlord-pulse-label">Active leases</span><strong class="landlord-pulse-value">{{ leases|length }}</strong>
+        <span class="landlord-pulse-card-foot"><span>Current tenant agreements</span><b>↗</b></span>
+      </a>
+      <a class="landlord-pulse-card pulse-attention" href="/maintenance/">
+        <span class="landlord-pulse-card-top"><span class="landlord-pulse-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.8 19a1.4 1.4 0 0 0 1.2 2h16a1.4 1.4 0 0 0 1.2-2L12 3Zm0 6v5m0 3.2v.2"/></svg></span><span class="landlord-pulse-index">03</span></span>
+        <span class="landlord-pulse-label">Needs attention</span><strong class="landlord-pulse-value">{{ open_complaint_count|add:pending_application_count }}</strong>
+        <span class="landlord-pulse-card-foot"><span>{{ open_complaint_count }} maintenance · {{ pending_application_count }} applications</span><b>↗</b></span>
+      </a>
+      <a class="landlord-pulse-card pulse-income" href="/payments/">
+        <span class="landlord-pulse-card-top"><span class="landlord-pulse-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20m5-15.5c-.7-1-2-1.5-4.5-1.5-2.8 0-4.5 1.1-4.5 3s1.5 2.8 4.5 3.5 4.5 1.6 4.5 3.5-1.7 3-4.5 3c-2.5 0-3.8-.5-4.5-1.5"/></svg></span><span class="landlord-pulse-index">04</span></span>
+        <span class="landlord-pulse-label">Rental income</span><strong class="landlord-pulse-value pulse-currency">KES {{ rental_income_total|floatformat:0 }}</strong>
+        <span class="landlord-pulse-card-foot"><span>{{ successful_rental_payment_count }} successful payment records</span><b>↗</b></span>
+      </a>
+    </div>
+  </section>
 
   <section class="panel landlord-dashboard-panel">
     <div class="panel-head"><div><h2>My properties</h2><p class="landlord-section-note">Your newest listings appear first.</p></div><a href="/properties/">My listings</a></div>
