@@ -278,10 +278,6 @@ def dashboard(request, role=None):
     rent_dues = []
     rent_due_total = 0
     rent_due_count = 0
-    open_complaint_count = 0
-    pending_application_count = 0
-    rental_income_total = Decimal("0")
-    successful_rental_payment_count = 0
 
     if actual_role == "tenant":
         properties = Property.objects.filter(status="Available", floors__units__status="Available").distinct().prefetch_related("images", "floors__units")[:3]
@@ -300,13 +296,6 @@ def dashboard(request, role=None):
         leases = Lease.objects.filter(property__owner=request.user, status="Active").select_related("property", "tenant").order_by("-start_date", "-pk")
         payments = Payment.objects.filter(lease__property__owner=request.user).select_related("lease", "user").order_by("-created_at")
         applications = RentalApplication.objects.filter(property__owner=request.user).select_related("property", "unit", "tenant").order_by("-created_at")
-        open_complaint_count = requests.exclude(status="Resolved").count()
-        pending_application_count = applications.filter(status="Pending").count()
-        successful_rental_payments = payments.filter(
-            kind__in=["Rent payment", "Short stay payment"], status__in=["Completed", "Paid"]
-        )
-        rental_income_total = successful_rental_payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
-        successful_rental_payment_count = successful_rental_payments.count()
     elif actual_role == "worker":
         jobs = Job.objects.filter(Q(status="Open") | Q(worker=request.user)).select_related("property")
         worker_payouts = Payment.objects.filter(job__worker=request.user, kind="Worker payout")
@@ -360,8 +349,6 @@ def dashboard(request, role=None):
         counts=counts, payout_due_total=payout_due_total, payout_paid_total=payout_paid_total,
         open_job_count=open_job_count, assigned_job_count=assigned_job_count,
         rent_dues=rent_dues, rent_due_total=rent_due_total, rent_due_count=rent_due_count,
-        open_complaint_count=open_complaint_count, pending_application_count=pending_application_count,
-        rental_income_total=rental_income_total, successful_rental_payment_count=successful_rental_payment_count,
     ))
 
 
@@ -2095,6 +2082,7 @@ def reports(request):
         return queryset.filter(**{f"{field}__date__gte": start, f"{field}__date__lte": end})
 
     cards, tables = [], []
+    property_cards = []
     def card(label, value, note=""):
         if isinstance(value, Decimal):
             display_value = f"{value:,.2f}"
@@ -2156,6 +2144,24 @@ def reports(request):
             prop_leases = [lease for lease in active_leases if lease.property_id == prop.id]
             monthly_rent = sum((lease.rent for lease in prop_leases), Decimal("0"))
             confirmed_stays = sum(1 for stay in stays if stay.property_id == prop.id)
+            property_cards.append({
+                "title": prop.title,
+                "location": f"{prop.city}, {prop.county or prop.location}",
+                "status": prop.get_status_display(),
+                "unit_count": len(units),
+                "occupied": occupied,
+                "vacant": len(units) - occupied,
+                "occupancy_percent": round(occupied / len(units) * 100) if units else 0,
+                "lease_count": len(prop_leases),
+                "monthly_rent": monthly_rent,
+                "rent_due": rent_due_by_property.get(prop.id, Decimal("0")),
+                "deposits_held": held_deposit_by_property.get(prop.id, Decimal("0")),
+                "deposits_outstanding": due_deposit_by_property.get(prop.id, Decimal("0")),
+                "confirmed_stays": confirmed_stays,
+                "collected": income_by_property.get(prop.id, Decimal("0")),
+                "worker_payouts": payout_by_property.get(prop.id, Decimal("0")),
+                "open_repairs": property_open_repairs,
+            })
             property_rows.append([prop.title, f"{prop.city}, {prop.county or prop.location}", prop.get_status_display(), len(units), occupied, len(units)-occupied, len(prop_leases), monthly_rent, rent_due_by_property.get(prop.id, Decimal("0")), held_deposit_by_property.get(prop.id, Decimal("0")), due_deposit_by_property.get(prop.id, Decimal("0")), confirmed_stays, income_by_property.get(prop.id, Decimal("0")), payout_by_property.get(prop.id, Decimal("0")), property_open_repairs])
         collected = sum((p.amount for p in payments if p.kind in {"Rent payment", "Short stay payment"} and p.status == "Completed"), Decimal("0"))
         card("Properties", owned.count())
@@ -2258,7 +2264,7 @@ def reports(request):
     return render(request, "portal/reports.html", {
         "role": role, "report_start": start, "report_end": end,
         "report_start_value": start.isoformat(), "report_end_value": end.isoformat(),
-        "cards": cards, "tables": tables,
+        "cards": cards, "tables": tables, "property_cards": property_cards,
     })
 
 
