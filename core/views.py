@@ -76,12 +76,7 @@ def add_months(value, months):
 
 def current_month_term_end(lease, today=None):
     """Return the end date of an active month-to-month term."""
-    today = today or timezone.localdate()
-    elapsed = max(0, (today.year - lease.start_date.year) * 12 + today.month - lease.start_date.month)
-    term_start = add_months(lease.start_date, elapsed)
-    if term_start > today:
-        elapsed = max(0, elapsed - 1)
-    return add_months(lease.start_date, elapsed + 1) - timedelta(days=1)
+    return lease.monthly_term_end(today)
 
 
 def lease_has_approved_moveout(lease):
