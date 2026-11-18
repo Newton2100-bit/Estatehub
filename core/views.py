@@ -1165,6 +1165,26 @@ def payments(request):
     pending_payout_total = qs.filter(kind="Worker payout", status="Awaiting payment").aggregate(total=Sum("amount"))["total"] or 0
     paid_payout_total = qs.filter(kind="Worker payout", status="Paid").aggregate(total=Sum("amount"))["total"] or 0
     qs = qs.order_by("-created_at")
+    landlord_receipts = Payment.objects.none()
+    landlord_worker_payouts = Payment.objects.none()
+    rent_received_total = deposit_held_total = Decimal("0")
+    unresolved_payout_count = 0
+    if role == "landlord":
+        landlord_receipts = qs.filter(kind__in=["Rent payment", "Security deposit", "Short stay payment"]).select_related(
+            "lease__property", "lease__unit", "booking__property", "booking__unit", "user"
+        )
+        landlord_worker_payouts = qs.filter(kind="Worker payout").select_related(
+            "job__property", "job__worker", "user", "user__profile"
+        )
+        unresolved_payout_count = landlord_worker_payouts.filter(
+            status__in=["Payout status unknown", "Review required"]
+        ).count()
+        rent_received_total = landlord_receipts.filter(
+            kind__in=["Rent payment", "Short stay payment"], status="Completed"
+        ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        deposit_held_total = landlord_receipts.filter(
+            kind="Security deposit", status="Completed"
+        ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
     payment_methods = [("mpesa", "M-Pesa"), ("bank_transfer", "Bank transfer"), ("cash", "Cash"), ("other", "Other")]
     return render(request, "portal/payments.html", {
         "payments": qs,
@@ -1174,6 +1194,11 @@ def payments(request):
         "role": role,
         "pending_payout_total": pending_payout_total,
         "paid_payout_total": paid_payout_total,
+        "landlord_receipts": landlord_receipts,
+        "landlord_worker_payouts": landlord_worker_payouts,
+        "rent_received_total": rent_received_total,
+        "deposit_held_total": deposit_held_total,
+        "unresolved_payout_count": unresolved_payout_count,
         "payment_methods": payment_methods,
         "profile": getattr(request.user, "profile", None),
         "stk_configured": daraja.configured("DARAJA_CONSUMER_KEY", "DARAJA_CONSUMER_SECRET", "DARAJA_SHORTCODE", "DARAJA_PASSKEY") and settings.PUBLIC_BASE_URL.startswith("https://") and bool(settings.DARAJA_CALLBACK_TOKEN),
