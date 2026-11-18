@@ -434,7 +434,8 @@ def property_detail(request, pk):
     prop = get_object_or_404(Property.objects.prefetch_related("images", "floors__units"), pk=pk)
     is_owner = request.user.is_authenticated and prop.owner_id == request.user.id
     role = current_role(request.user) if request.user.is_authenticated else None
-    is_tenant = role == "tenant" and Lease.objects.filter(property=prop, tenant=request.user, status="Active").exists()
+    tenant_lease = Lease.objects.filter(property=prop, tenant=request.user, status="Active").select_related("unit").first() if role == "tenant" else None
+    is_tenant = tenant_lease is not None
     is_caretaker = request.user.is_authenticated and prop.caretaker_id == request.user.id
     if role == "management" and not is_caretaker:
         raise PermissionDenied
@@ -451,7 +452,7 @@ def property_detail(request, pk):
     guest_bookings = Booking.objects.filter(property=prop, tenant=request.user).select_related("unit").order_by("-check_in") if role == "tenant" else Booking.objects.none()
     today = timezone.localdate()
     occupied_stays = Booking.objects.filter(property=prop, status__in=["Confirmed", "Checked in"], check_out__gte=today).select_related("unit").order_by("check_in")
-    return render(request, "portal/property_detail.html", {"property": prop, "application": application, "applied_unit_ids": applied_unit_ids, "leased_unit_ids": leased_unit_ids, "is_tenant": is_tenant, "role": role, "host_bookings": host_bookings, "guest_bookings": guest_bookings, "occupied_stays": occupied_stays, "today": today, "tomorrow": today + timedelta(days=1)})
+    return render(request, "portal/property_detail.html", {"property": prop, "application": application, "applied_unit_ids": applied_unit_ids, "leased_unit_ids": leased_unit_ids, "is_tenant": is_tenant, "tenant_lease": tenant_lease, "role": role, "host_bookings": host_bookings, "guest_bookings": guest_bookings, "occupied_stays": occupied_stays, "today": today, "tomorrow": today + timedelta(days=1)})
 
 
 @role_required("tenant")
@@ -1295,6 +1296,69 @@ def daraja_b2c_timeout(request, token):
         if updated:
             notify_admins(f"Worker payout conversation {conversation_id} timed out and needs reconciliation.", "/admin/core/payment/")
     return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})
+
+
+@role_required("tenant")
+def move_out_request(request, lease_id):
+    lease = get_object_or_404(
+        Lease.objects.select_related("property", "unit", "tenant").prefetch_related("change_requests"),
+        pk=lease_id, tenant=request.user,
+    )
+    today = timezone.localdate()
+    changes = list(lease.change_requests.all())
+    pending_change = next((change for change in changes if change.status == "Pending"), None)
+    approved_moveout = next((
+        change for change in changes
+        if change.request_type == "move_out" and change.status == "Approved"
+    ), None)
+    current_term_end = current_month_term_end(lease, today) if lease.status == "Active" else lease.end_date
+
+    if request.method == "POST":
+        if lease.status != "Active":
+            messages.error(request, "Move-out requests are available for active leases only.")
+            return redirect("move_out_request", lease_id=lease.pk)
+        if approved_moveout:
+            messages.error(request, "A move-out date has already been approved for this lease.")
+            return redirect("move_out_request", lease_id=lease.pk)
+        if pending_change:
+            messages.error(request, "Resolve the pending lease request before submitting another request.")
+            return redirect("move_out_request", lease_id=lease.pk)
+        try:
+            proposed_end_date = date.fromisoformat(request.POST.get("proposed_end_date", ""))
+        except (ValueError, TypeError):
+            messages.error(request, "Choose a valid move-out date.")
+            return redirect("move_out_request", lease_id=lease.pk)
+        if not today <= proposed_end_date <= current_term_end:
+            messages.error(request, f"Choose a date from today through the current term end ({current_term_end:%d %b %Y}).")
+            return redirect("move_out_request", lease_id=lease.pk)
+        try:
+            with transaction.atomic():
+                change_request = LeaseChangeRequest.objects.create(
+                    lease=lease,
+                    request_type="move_out",
+                    proposed_end_date=proposed_end_date,
+                    message=request.POST.get("message", "").strip()[:4000],
+                )
+        except IntegrityError:
+            messages.error(request, "A lease request is already pending. Check its status before trying again.")
+            return redirect("move_out_request", lease_id=lease.pk)
+        if lease.property.owner_id:
+            notify_user(
+                lease.property.owner,
+                f"{request.user.get_full_name() or request.user.username} requested to move out of {lease.property.title}, Unit {lease.unit.unit_number if lease.unit_id else '1'}.",
+                "/leases/",
+            )
+        messages.success(request, "Your move-out request was sent to the landlord.")
+        return redirect("move_out_request", lease_id=lease.pk)
+
+    return render(request, "portal/move_out_request.html", {
+        "lease": lease,
+        "change_requests": changes,
+        "pending_change": pending_change,
+        "approved_moveout": approved_moveout,
+        "current_term_end": current_term_end,
+        "today": today,
+    })
 
 
 @login_required
