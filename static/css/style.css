@@ -507,7 +507,7 @@
 @media(max-width:600px){.lease-management-page{padding-top:27px;padding-bottom:60px}.lease-page-heading{display:block}.lease-page-heading>.btn{margin-top:13px}.lease-overview{grid-template-columns:1fr;gap:8px;margin:18px 0}.lease-overview-card{padding:14px 16px}.lease-search-panel{grid-template-columns:1fr;padding:14px}.lease-search-panel label:first-child{grid-column:auto}.lease-search-actions{display:grid;grid-template-columns:1fr 1fr}.lease-card{padding:17px 15px}.lease-card-heading{gap:10px}.lease-card-heading h2{font-size:17px}.lease-card-heading p{font-size:10px}.lease-facts{gap:7px;margin:12px 0}.lease-facts>div{padding:10px}.lease-facts strong{font-size:11px}.lease-facts span{font-size:9px}.lease-tenant-actions{display:grid}.lease-landlord-tools .rent-record-form{grid-template-columns:1fr}.lease-pagination{gap:8px;flex-wrap:wrap}}
 
 /* Explicitly center the leases content on the site grid */
-.app-lite>main.lease-management-page{box-sizing:border-box;width:min(1180px,calc(100% - 40px));max-width:1180px;margin-right:auto;margin-left:auto}
+.app-lite>main.lease-management-page{box-sizing:border-box;width:min(960px,calc(100% - 40px));max-width:960px;margin-right:auto;margin-left:auto}
 .lease-page-heading,.lease-overview,.lease-search-panel,.lease-result-count,.lease-record-list,.lease-pagination{width:100%;max-width:100%}
 .lease-record-list{margin-right:auto;margin-left:auto}
 .lease-card,.lease-empty-state{width:100%;max-width:100%;margin-right:auto;margin-left:auto}
