@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Jobs — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav">
+    <a class="brand" href="/">Estate<span>Hub</span></a>
+    <nav><a href="/dashboard/">Dashboard</a><a class="active" href="/jobs/">{% if role == 'worker' %}Available jobs{% else %}Posted jobs{% endif %}</a><a href="/maintenance/">Maintenance</a></nav>
+    <a href="/logout/">Sign out</a>
+  </header>
+  <main class="jobs-page public wrap">
+    <div class="jobs-heading">
+      <div><div class="eyebrow">{% if role == 'tenant' %}REPAIRS AT MY HOME{% else %}WORKER MARKETPLACE{% endif %}</div><h1>{% if role == 'worker' %}Find a job{% elif role == 'tenant' %}Track repair jobs{% else %}Track worker jobs{% endif %}</h1>
+        <p>{% if role == 'worker' %}Browse available work and request approval. You can start only after the property team assigns the job to you.{% elif role == 'tenant' %}Follow worker jobs linked to your active rental or to a maintenance report you submitted.{% else %}Review worker requests and track jobs across your properties.{% endif %}</p>
+      </div>
+      <div class="jobs-count"><strong>{{jobs|length}}</strong><span>total jobs</span></div>
+    </div>
+
+    {% if role == 'landlord' or role == 'management' or role == 'admin' %}
+    <section class="panel">
+      <div class="panel-head"><div><h2>Worker requests awaiting approval</h2><p>Approve one worker to assign the job, or decline the request.</p></div><span class="badge amber">{{pending_worker_requests|length}} pending</span></div>
+      {% for application in pending_worker_requests %}
+      <article class="request-row">
+        <div><h3>{{application.job.title}}</h3><p>{{application.job.property.title|default:application.job.location}} · {{application.worker.get_full_name|default:application.worker.username}} · {{application.worker.email}}</p><small>Requested {{application.created_at|date:'M d, Y H:i'}} · Estimated payout KES {{application.job.payout|floatformat:2}}</small></div>
+        <div class="actions">
+          <form method="post" action="/jobs/{{application.job_id}}/requests/{{application.id}}/approve/">{% csrf_token %}<button class="btn">Approve worker</button></form>
+          <form method="post" action="/jobs/{{application.job_id}}/requests/{{application.id}}/reject/">{% csrf_token %}<button class="btn danger">Decline</button></form>
+        </div>
+      </article>
+      {% empty %}<p>No worker requests need review right now.</p>{% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="jobs-group jobs-group-open">
+      <div class="jobs-group-heading"><div><span class="eyebrow">{% if role == 'worker' %}NEW WORK{% elif role == 'tenant' %}NOT YET ASSIGNED{% else %}WAITING FOR A WORKER{% endif %}</span><h2>{% if role == 'worker' %}Available jobs{% elif role == 'tenant' %}Awaiting a worker{% else %}Open jobs{% endif %}</h2><p>{% if role == 'worker' %}Send a request for any job you are qualified to do.{% elif role == 'tenant' %}The property team is reviewing or assigning these repair jobs.{% else %}Workers can request these jobs. Your approval is required before they start.{% endif %}</p></div><span class="jobs-group-count">{{open_jobs|length}}</span></div>
+      <div class="jobs-list">
+        {% for job in open_jobs %}
+        <article class="job-card">
+          <div class="job-card-content"><div class="job-card-labels"><span class="badge {% if job.urgent %}red{% else %}green{% endif %}">{% if job.urgent %}Urgent{% else %}Standard{% endif %}</span><span class="badge status-badge">Open</span></div><h3>{{job.title}}</h3><div class="job-card-facts"><span>⌖ {{job.location}}</span><span>Trade: {{job.trade}}</span></div><p class="job-card-description">{{job.description|default:'Details will be provided by the property team.'}}</p></div>
+          <aside class="job-card-actions">{% if role != 'tenant' %}<div class="job-payout"><small>ESTIMATED PAY</small><strong>KES {{job.payout|floatformat:2}}</strong></div>{% endif %}<a class="btn ghost" href="/jobs/{{job.id}}/">View details</a>
+            {% if role == 'worker' %}{% with application=job.my_worker_requests|first %}
+              {% if application.status == 'Pending' %}<span class="badge amber">Request pending</span>
+              {% elif application.status == 'Rejected' %}<form method="post" action="/jobs/{{job.id}}/request/">{% csrf_token %}<button class="btn">Request again</button></form>
+              {% else %}<form method="post" action="/jobs/{{job.id}}/request/">{% csrf_token %}<button class="btn">Request approval</button></form>{% endif %}
+            {% endwith %}{% endif %}
+          </aside>
+        </article>
+        {% empty %}<div class="jobs-empty"><div class="jobs-empty-icon">✓</div><h3>No open jobs</h3><p>{% if role == 'worker' %}New jobs from landlords and caretakers will appear here.{% elif role == 'tenant' %}No repairs at your home are waiting for a worker. Your submitted reports remain in <a href="/maintenance/">Maintenance</a>.{% else %}All posted jobs have been assigned, or no jobs are waiting for a worker.{% endif %}</p></div>{% endfor %}
+      </div>
+    </section>
+
+    <hr class="jobs-section-divider">
+    <section class="jobs-group jobs-group-active">
+      <div class="jobs-group-heading"><div><span class="eyebrow">{% if role == 'worker' %}YOUR WORK{% else %}JOB PROGRESS{% endif %}</span><h2>{% if role == 'worker' %}Jobs assigned to you{% elif role == 'tenant' %}Assigned and completed repairs{% else %}Assigned and completed{% endif %}</h2><p>{% if role == 'worker' %}Start and complete approved jobs from their detail pages.{% elif role == 'tenant' %}See the status and worker assigned to each repair job.{% else %}Track each worker’s progress.{% endif %}</p></div><span class="jobs-group-count">{{my_jobs|length}}</span></div>
+      <div class="jobs-list">
+        {% for job in my_jobs %}
+        <article class="job-card"><div class="job-card-content"><div class="job-card-labels"><span class="badge {% if job.urgent %}red{% else %}green{% endif %}">{% if job.urgent %}Urgent{% else %}Standard{% endif %}</span><span class="badge status-badge">{{job.status}}</span></div><h3>{{job.title}}</h3><div class="job-card-facts"><span>⌖ {{job.location}}</span><span>Trade: {{job.trade}}</span></div><p class="job-card-description">{{job.description|default:'No extra instructions provided.'}}</p>{% if job.worker %}<p class="job-worker">Worker: {{job.worker.get_full_name|default:job.worker.username}}</p>{% endif %}</div><aside class="job-card-actions">{% if role != 'tenant' %}<div class="job-payout"><small>ESTIMATED PAY</small><strong>KES {{job.payout|floatformat:2}}</strong></div>{% endif %}<a class="btn ghost" href="/jobs/{{job.id}}/">View details</a></aside></article>
+        {% empty %}<div class="jobs-empty"><div class="jobs-empty-icon">⌂</div><h3>No assigned jobs yet</h3><p>{% if role == 'worker' %}Once the property team approves your request, the job will appear here.{% else %}Approved work and completed jobs will appear here.{% endif %}</p></div>{% endfor %}
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}
