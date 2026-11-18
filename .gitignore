@@ -1,0 +1,11 @@
+.env
+/EstateHub-git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+/media/
+/EstateHub.pdf
+staticfiles/
+.DS_Store
