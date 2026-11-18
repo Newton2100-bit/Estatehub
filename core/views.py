@@ -66,8 +66,41 @@ def ctx(**values):
     return values
 
 
-def build_rent_schedule(leases, today=None):
-    """Return unpaid rent periods and the current period for active leases."""
+def add_months(value, months):
+    """Add calendar months while clamping to the target month's final day."""
+    month_index = value.month - 1 + months
+    year = value.year + month_index // 12
+    month = month_index % 12 + 1
+    return date(year, month, min(value.day, calendar.monthrange(year, month)[1]))
+
+
+def current_month_term_end(lease, today=None):
+    """Return the end date of an active month-to-month term."""
+    today = today or timezone.localdate()
+    elapsed = max(0, (today.year - lease.start_date.year) * 12 + today.month - lease.start_date.month)
+    term_start = add_months(lease.start_date, elapsed)
+    if term_start > today:
+        elapsed = max(0, elapsed - 1)
+    return add_months(lease.start_date, elapsed + 1) - timedelta(days=1)
+
+
+def lease_has_approved_moveout(lease):
+    changes = lease.change_requests.all()
+    if hasattr(lease, "_prefetched_objects_cache") and "change_requests" in lease._prefetched_objects_cache:
+        return any(change.request_type == "move_out" and change.status == "Approved" for change in changes)
+    return changes.filter(request_type="move_out", status="Approved").exists()
+
+
+def lease_last_billable_period(lease, today=None):
+    today = today or timezone.localdate()
+    current_period = today.replace(day=1)
+    if lease.status == "Active" and not lease_has_approved_moveout(lease):
+        return current_period
+    return min(current_period, lease.end_date.replace(day=1))
+
+
+def build_rent_schedule(leases, today=None, include_paid_history=False):
+    """Build monthly rent obligations; active leases renew until move-out is approved."""
     today = today or timezone.localdate()
     current_period = today.replace(day=1)
     leases = list(leases)
@@ -87,7 +120,7 @@ def build_rent_schedule(leases, today=None):
     schedule = []
     for lease in leases:
         period = lease.start_date.replace(day=1)
-        last_period = min(current_period, lease.end_date.replace(day=1))
+        last_period = lease_last_billable_period(lease, today)
         while period <= last_period:
             month_last_day = calendar.monthrange(period.year, period.month)[1]
             due_day = min(lease.rent_due_day, month_last_day)
@@ -109,7 +142,7 @@ def build_rent_schedule(leases, today=None):
             else:
                 status = "Upcoming"
 
-            if status != "Paid" or period == current_period:
+            if include_paid_history or status != "Paid" or period == current_period:
                 schedule.append({
                     "lease": lease,
                     "period": period,
@@ -288,6 +321,15 @@ def dashboard(request, role=None):
         payments = Payment.objects.all()
         applications = RentalApplication.objects.all().select_related("property", "tenant")
         leases = Lease.objects.all().select_related("property", "tenant")
+
+    if leases:
+        report_today = timezone.localdate()
+        for lease in leases:
+            lease.current_term_end = (
+                current_month_term_end(lease, report_today)
+                if lease.status == "Active" and not lease_has_approved_moveout(lease)
+                else lease.end_date
+            )
 
     counts = {
         "users": User.objects.count(),
@@ -669,9 +711,15 @@ def review_application(request, application_id, decision):
         if decision == "approve":
             lease_start = timezone.localdate()
             rent = unit.rent if unit else prop.rent
-            Lease.objects.create(
+            lease = Lease.objects.create(
                 property=prop, unit=unit, tenant=application.tenant, application=application,
-                start_date=lease_start, end_date=lease_start + timedelta(days=365), rent=rent,
+                start_date=lease_start, end_date=add_months(lease_start, 1) - timedelta(days=1),
+                rent=rent, deposit_amount=rent, rent_due_day=lease_start.day,
+            )
+            Payment.objects.create(
+                entity=f"{prop.title} · Unit {unit.unit_number if unit else '1'} · Security deposit",
+                kind="Security deposit", amount=lease.deposit_amount, status="Due",
+                user=application.tenant, lease=lease, dedupe_key=f"deposit:{lease.pk}",
             )
             if unit:
                 unit.status = "Rented"
@@ -685,8 +733,8 @@ def review_application(request, application_id, decision):
             pending_applications.exclude(pk=application.pk).update(
                 status="Rejected", reviewed_at=timezone.now()
             )
-            messages.success(request, "Application approved and lease created.")
-            notify_user(application.tenant, f"Your application for {prop.title}, Unit {unit.unit_number if unit else '1'} was approved and your lease is ready to view.", "/leases/")
+            messages.success(request, "Application approved. A one-month lease was created with a first-month rent deposit due.")
+            notify_user(application.tenant, f"Your application for {prop.title}, Unit {unit.unit_number if unit else '1'} was approved. The month-to-month lease is ready; the refundable security deposit due is KES {lease.deposit_amount}, equal to one month's rent.", "/payments/")
         else:
             messages.success(request, "Application declined.")
             notify_user(application.tenant, f"Your application for {prop.title}, Unit {unit.unit_number if unit else '1'} was declined by the landlord.", f"/property/{prop.pk}/")
@@ -839,8 +887,8 @@ def payments(request):
     rent_dues = []
     bookings = Booking.objects.none()
     if role == "tenant":
-        leases = Lease.objects.filter(tenant=request.user, status="Active").select_related("property", "unit")
-        rent_dues = build_rent_schedule(leases)
+        leases = Lease.objects.filter(tenant=request.user, status__in=["Active", "Ended"]).select_related("property", "unit")
+        rent_dues = build_rent_schedule(leases, include_paid_history=True)
         bookings = Booking.objects.filter(tenant=request.user, status="Confirmed").select_related("property", "unit").prefetch_related(
             Prefetch("payments", queryset=Payment.objects.filter(kind="Short stay payment").order_by("-created_at"), to_attr="stay_payments")
         ).order_by("check_in")
@@ -866,8 +914,60 @@ def payments(request):
     else:
         raise PermissionDenied
 
+    lease_rows = None
+    if role == "tenant":
+        lease_rows = list(leases)
+        deposit_by_lease = {}
+        for deposit in Payment.objects.filter(lease_id__in=[lease.pk for lease in lease_rows], kind="Security deposit").order_by("created_at"):
+            deposit_by_lease[deposit.lease_id] = deposit
+        for lease in lease_rows:
+            lease.deposit_payment = deposit_by_lease.get(lease.pk)
+
     if request.method == "POST":
         action = request.POST.get("action")
+        if action == "initiate_security_deposit" and role == "tenant":
+            lease = get_object_or_404(leases, pk=request.POST.get("lease"))
+            deposit = Payment.objects.filter(lease=lease, kind="Security deposit").order_by("-created_at").first()
+            if deposit is None:
+                messages.error(request, "The deposit ledger entry is missing. Contact the landlord before attempting payment.")
+                return redirect("payments")
+            with transaction.atomic():
+                deposit = Payment.objects.select_for_update().get(pk=deposit.pk)
+                if deposit.status == "Completed":
+                    messages.info(request, "The security deposit for this lease is already recorded as paid.")
+                    return redirect("payments")
+                if deposit.status not in {"Due", "Failed"}:
+                    messages.warning(request, "This deposit payment is awaiting confirmation or review. Check the payment ledger before retrying.")
+                    return redirect("payments")
+                deposit.status = "Initiating"
+                deposit.payer_phone = request.POST.get("phone", "").strip()[:20]
+                deposit.payment_method = "M-Pesa"
+                deposit.provider_result_description = ""
+                deposit.save(update_fields=["status", "payer_phone", "payment_method", "provider_result_description"])
+            try:
+                response, normalized_phone = daraja.initiate_stk_push(deposit, deposit.payer_phone)
+            except daraja.DarajaUnknownOutcome as exc:
+                deposit.status = "Initiation status unknown"
+                deposit.provider_result_description = str(exc)[:255]
+                deposit.save(update_fields=["status", "provider_result_description"])
+                messages.error(request, f"{exc} The deposit is locked to prevent a duplicate charge.")
+                notify_admins(f"Security deposit payment {deposit.pk} has an unknown Daraja outcome and needs reconciliation.", "/admin/core/payment/")
+                return redirect("payments")
+            except daraja.DarajaError as exc:
+                deposit.status = "Failed"
+                deposit.provider_result_description = str(exc)[:255]
+                deposit.save(update_fields=["status", "provider_result_description"])
+                messages.error(request, str(exc))
+                return redirect("payments")
+            deposit.status = "Pending"
+            deposit.payer_phone = normalized_phone
+            deposit.checkout_request_id = response["CheckoutRequestID"]
+            deposit.merchant_request_id = response.get("MerchantRequestID", "")
+            deposit.provider_initiated_at = timezone.now()
+            deposit.save(update_fields=["status", "payer_phone", "checkout_request_id", "merchant_request_id", "provider_initiated_at"])
+            messages.success(request, "M-Pesa deposit request sent. The ledger updates after Safaricom confirms payment.")
+            return redirect("payments")
+
         if action == "initiate_rent_payment" and role == "tenant":
             lease = get_object_or_404(leases, pk=request.POST.get("lease"))
             phone = request.POST.get("phone", "").strip()
@@ -876,9 +976,8 @@ def payments(request):
             except ValueError:
                 messages.error(request, "Choose the month this rent payment covers.")
                 return redirect("payments")
-            current_period = timezone.localdate().replace(day=1)
-            if billing_period < lease.start_date.replace(day=1) or billing_period > min(current_period, lease.end_date.replace(day=1)):
-                messages.error(request, "Choose a rent month within the dates of your active lease and no later than this month.")
+            if billing_period < lease.start_date.replace(day=1) or billing_period > lease_last_billable_period(lease):
+                messages.error(request, "Choose a rent month within your active month-to-month lease and no later than this month.")
                 return redirect("payments")
             period_payments = Payment.objects.filter(lease=lease, kind="Rent payment", billing_period=billing_period)
             if period_payments.filter(status__in=["Initiating", "Pending", "Completed", "Review required", "Initiation status unknown"]).exists():
@@ -1059,7 +1158,7 @@ def payments(request):
     payment_methods = [("mpesa", "M-Pesa"), ("bank_transfer", "Bank transfer"), ("cash", "Cash"), ("other", "Other")]
     return render(request, "portal/payments.html", {
         "payments": qs,
-        "leases": leases,
+        "leases": lease_rows if role == "tenant" else leases,
         "bookings": bookings,
         "rent_dues": rent_dues,
         "role": role,
@@ -1096,7 +1195,7 @@ def daraja_stk_callback(request, token):
     if not checkout_id:
         return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})
     with transaction.atomic():
-        payment = Payment.objects.select_for_update().filter(checkout_request_id=checkout_id, kind__in=["Rent payment", "Short stay payment"]).first()
+        payment = Payment.objects.select_for_update().filter(checkout_request_id=checkout_id, kind__in=["Rent payment", "Short stay payment", "Security deposit"]).first()
         if payment is None or payment.status in {"Completed", "Failed"}:
             return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})
         result_code = str(callback.get("ResultCode", ""))
@@ -1221,8 +1320,8 @@ def leases(request):
                 raise PermissionDenied
             lease = get_object_or_404(Lease.objects.select_related("property", "unit"), pk=request.POST.get("lease"), tenant=request.user, status="Active")
             request_type = request.POST.get("request_type")
-            if request_type not in {"renewal", "move_out"}:
-                messages.error(request, "Choose renewal or move-out notice.")
+            if request_type != "move_out":
+                messages.error(request, "Active leases renew monthly automatically. Use move-out notice to end the lease.")
                 return redirect("leases")
             try:
                 proposed_end_date = date.fromisoformat(request.POST.get("proposed_end_date", ""))
@@ -1230,14 +1329,9 @@ def leases(request):
                 messages.error(request, "Choose a valid proposed date.")
                 return redirect("leases")
             today = timezone.localdate()
-            if request_type == "renewal" and proposed_end_date <= lease.end_date:
-                messages.error(request, "A renewal must extend beyond the current lease end date.")
-                return redirect("leases")
-            if request_type == "renewal" and lease.change_requests.filter(request_type="move_out", status="Approved").exists():
-                messages.error(request, "A move-out has already been approved for this lease, so it cannot be renewed.")
-                return redirect("leases")
-            if request_type == "move_out" and not (today <= proposed_end_date <= lease.end_date):
-                messages.error(request, "Move-out date must be today or later and within the current lease term.")
+            current_term_end = current_month_term_end(lease, today)
+            if not (today <= proposed_end_date <= current_term_end):
+                messages.error(request, f"Move-out date must be today or later and no later than the current monthly term end ({current_term_end:%d %b %Y}).")
                 return redirect("leases")
             proposed_rent = None
             if request.POST.get("proposed_rent", "").strip():
@@ -1248,11 +1342,9 @@ def leases(request):
                 if proposed_rent <= 0 or proposed_rent > Decimal("9999999999.99"):
                     messages.error(request, "Enter a valid positive monthly rent for the renewal.")
                     return redirect("leases")
-            if request_type == "move_out" and proposed_rent is not None:
+            if proposed_rent is not None:
                 messages.error(request, "A move-out notice does not include a proposed rent.")
                 return redirect("leases")
-            if request_type == "renewal" and proposed_rent is None:
-                proposed_rent = lease.rent
             if LeaseChangeRequest.objects.filter(lease=lease, status="Pending").exists():
                 messages.error(request, "There is already a pending request for this lease.")
                 return redirect("leases")
@@ -1288,15 +1380,12 @@ def leases(request):
                     return redirect("leases")
                 approved = decision == "approve"
                 if approved and locked_request.request_type == "renewal":
-                    if locked_request.proposed_end_date <= lease.end_date:
-                        messages.error(request, "The lease dates changed; this renewal request needs a new proposed end date.")
-                        return redirect("leases")
-                    lease.end_date = locked_request.proposed_end_date
                     if locked_request.proposed_rent is not None:
                         lease.rent = locked_request.proposed_rent
-                    lease.save(update_fields=["end_date", "rent"])
+                        lease.save(update_fields=["rent"])
                 elif approved and locked_request.request_type == "move_out":
-                    if locked_request.proposed_end_date > lease.end_date:
+                    latest_allowed_end = current_month_term_end(lease) if not lease_has_approved_moveout(lease) else lease.end_date
+                    if locked_request.proposed_end_date > latest_allowed_end:
                         messages.error(request, "The lease dates changed; review the move-out date before approving.")
                         return redirect("leases")
                     lease.end_date = locked_request.proposed_end_date
@@ -1344,8 +1433,11 @@ def leases(request):
 
         if role != "landlord":
             raise PermissionDenied
-        lease = get_object_or_404(Lease, pk=request.POST.get("lease"), property__owner=request.user, status="Active")
+        lease = get_object_or_404(Lease, pk=request.POST.get("lease"), property__owner=request.user, status__in=["Active", "Ended"])
         if action == "update_rent_due_day":
+            if lease.status != "Active":
+                messages.error(request, "The rent due day cannot be changed after the lease has ended.")
+                return redirect("leases")
             try:
                 due_day = int(request.POST.get("rent_due_day", ""))
             except (TypeError, ValueError):
@@ -1357,15 +1449,49 @@ def leases(request):
             lease.save(update_fields=["rent_due_day"])
             messages.success(request, f"Rent for {lease.property.title}, Unit {lease.unit.unit_number if lease.unit_id else '1'} is now due on day {due_day} of each month.")
             return redirect("leases")
+        if action == "record_deposit_received":
+            method = request.POST.get("payment_method", "")
+            methods = {"mpesa": "M-Pesa", "bank_transfer": "Bank transfer", "cash": "Cash", "other": "Other"}
+            reference = request.POST.get("payment_reference", "").strip()[:100]
+            if method not in methods:
+                messages.error(request, "Choose how the security deposit was received.")
+                return redirect("leases")
+            if method == "mpesa" and not reference:
+                messages.error(request, "Enter the M-Pesa receipt code to record this deposit.")
+                return redirect("leases")
+            with transaction.atomic():
+                deposit = Payment.objects.select_for_update().filter(lease=lease, kind="Security deposit").order_by("-created_at").first()
+                if deposit is None:
+                    deposit = Payment.objects.create(
+                        entity=f"{lease.property.title} · Unit {lease.unit.unit_number if lease.unit_id else '1'} · Security deposit",
+                        kind="Security deposit", amount=lease.deposit_amount or lease.rent,
+                        status="Due", user=lease.tenant, lease=lease, dedupe_key=f"deposit:{lease.pk}",
+                    )
+                if deposit.status == "Completed":
+                    messages.info(request, "This security deposit is already recorded as received.")
+                    return redirect("leases")
+                if deposit.status not in {"Due", "Failed"}:
+                    messages.warning(request, "The deposit payment is awaiting confirmation or review; do not record it twice.")
+                    return redirect("leases")
+                deposit.status = "Completed"
+                deposit.user = lease.tenant
+                deposit.paid_by = request.user
+                deposit.paid_at = timezone.now()
+                deposit.payment_method = methods[method]
+                deposit.payment_reference = reference
+                deposit.save(update_fields=["status", "user", "paid_by", "paid_at", "payment_method", "payment_reference"])
+            if lease.tenant_id:
+                notify_user(lease.tenant, f"Your security deposit of KES {deposit.amount} for {lease.property.title} was recorded as received.", "/payments/")
+            messages.success(request, "Security deposit received and added to the payment history.")
+            return redirect("leases")
         if action == "record_rent_received":
             try:
                 billing_period = datetime.strptime(request.POST.get("billing_period", ""), "%Y-%m").date().replace(day=1)
             except ValueError:
                 messages.error(request, "Choose the month the rent payment covers.")
                 return redirect("leases")
-            current_period = timezone.localdate().replace(day=1)
-            if billing_period < lease.start_date.replace(day=1) or billing_period > min(current_period, lease.end_date.replace(day=1)):
-                messages.error(request, "Choose a rent month within the dates of this lease and no later than this month.")
+            if billing_period < lease.start_date.replace(day=1) or billing_period > lease_last_billable_period(lease):
+                messages.error(request, "Choose a rent month within the active month-to-month lease and no later than this month.")
                 return redirect("leases")
             method = request.POST.get("payment_method", "")
             methods = {"mpesa": "M-Pesa", "bank_transfer": "Bank transfer", "cash": "Cash", "other": "Other"}
@@ -1399,10 +1525,22 @@ def leases(request):
             messages.success(request, f"Rent received for {billing_period:%B %Y} was recorded.")
             return redirect("leases")
         raise PermissionDenied
+    lease_rows = list(qs.select_related("property", "tenant", "unit").prefetch_related("change_requests").order_by("-start_date"))
+    deposit_by_lease = {}
+    for deposit in Payment.objects.filter(lease_id__in=[item.pk for item in lease_rows], kind="Security deposit").order_by("created_at"):
+        deposit_by_lease[deposit.lease_id] = deposit
+    today = timezone.localdate()
+    for lease in lease_rows:
+        lease.deposit_payment = deposit_by_lease.get(lease.pk)
+        lease.current_term_end = (
+            current_month_term_end(lease, today)
+            if lease.status == "Active" and not lease_has_approved_moveout(lease)
+            else lease.end_date
+        )
     return render(request, "portal/leases.html", {
-        "leases": qs.select_related("property", "tenant", "unit").prefetch_related("change_requests"), "role": role,
-        "current_billing_period": timezone.localdate().strftime("%Y-%m"),
-        "today": timezone.localdate(),
+        "leases": lease_rows, "role": role,
+        "current_billing_period": today.strftime("%Y-%m"),
+        "today": today,
     })
 
 
@@ -1734,10 +1872,10 @@ def reports(request):
         applications = dated(RentalApplication.objects.filter(property_id__in=property_ids).select_related("property", "unit", "tenant").order_by("-created_at"))
         payments = dated(Payment.objects.filter(
             Q(lease__property_id__in=property_ids) | Q(booking__property_id__in=property_ids) | Q(job__property_id__in=property_ids)
-        ).select_related("lease__property", "booking__property", "job__property", "job__worker", "user").order_by("-created_at"))
+        ).select_related("lease__property", "lease__unit", "lease__tenant", "booking__property", "job__property", "job__worker", "user").order_by("-created_at"))
         requests = dated(MaintenanceRequest.objects.filter(property_id__in=property_ids).select_related("property", "unit").order_by("-created_at"))
         jobs = dated(Job.objects.filter(property_id__in=property_ids).select_related("property", "worker").order_by("-created_at"))
-        income_by_property = {}
+        income_by_property, payout_by_property = {}, {}
         for payment in payments:
             prop_id = (payment.lease.property_id if payment.lease_id else
                        payment.booking.property_id if payment.booking_id else
@@ -1746,8 +1884,15 @@ def reports(request):
                 continue
             if payment.kind in {"Rent payment", "Short stay payment"} and payment.status == "Completed":
                 income_by_property[prop_id] = income_by_property.get(prop_id, Decimal("0")) + payment.amount
-            elif payment.kind == "Worker payout":
+            elif payment.kind == "Worker payout" and payment.status == "Paid":
                 payout_by_property[prop_id] = payout_by_property.get(prop_id, Decimal("0")) + payment.amount
+        deposit_records = Payment.objects.filter(
+            lease__property_id__in=property_ids, kind="Security deposit"
+        ).select_related("lease__property", "lease__unit", "lease__tenant").order_by("-created_at")
+        held_deposit_by_property, due_deposit_by_property = {}, {}
+        for deposit in deposit_records:
+            target = held_deposit_by_property if deposit.status == "Completed" else due_deposit_by_property
+            target[deposit.lease.property_id] = target.get(deposit.lease.property_id, Decimal("0")) + deposit.amount
         unit_count = occupied_count = 0
         property_rows = []
         for prop in owned:
@@ -1759,36 +1904,45 @@ def reports(request):
             prop_leases = [lease for lease in active_leases if lease.property_id == prop.id]
             monthly_rent = sum((lease.rent for lease in prop_leases), Decimal("0"))
             confirmed_stays = sum(1 for stay in stays if stay.property_id == prop.id)
-            property_rows.append([prop.title, f"{prop.city}, {prop.county or prop.location}", prop.get_status_display(), len(units), occupied, len(units)-occupied, len(prop_leases), monthly_rent, rent_due_by_property.get(prop.id, Decimal("0")), confirmed_stays, income_by_property.get(prop.id, Decimal("0")), property_open_repairs])
+            property_rows.append([prop.title, f"{prop.city}, {prop.county or prop.location}", prop.get_status_display(), len(units), occupied, len(units)-occupied, len(prop_leases), monthly_rent, rent_due_by_property.get(prop.id, Decimal("0")), held_deposit_by_property.get(prop.id, Decimal("0")), due_deposit_by_property.get(prop.id, Decimal("0")), confirmed_stays, income_by_property.get(prop.id, Decimal("0")), payout_by_property.get(prop.id, Decimal("0")), property_open_repairs])
         collected = sum((p.amount for p in payments if p.kind in {"Rent payment", "Short stay payment"} and p.status == "Completed"), Decimal("0"))
         card("Properties", owned.count())
         card("Units occupied", f"{occupied_count} / {unit_count}", f"{(occupied_count / unit_count * 100):.0f}% occupancy" if unit_count else "Add units to track occupancy")
         card("Contracted monthly rent", sum((lease.rent for lease in active_leases), Decimal("0")), "Active long-term leases")
         card("Rent due now", sum(rent_due_by_property.values(), Decimal("0")), "Overdue or due today")
+        card("Deposits held", sum(held_deposit_by_property.values(), Decimal("0")), "Recorded as received")
+        card("Deposits outstanding", sum(due_deposit_by_property.values(), Decimal("0")), "Active leases without confirmed deposit receipt")
         card("Collected in period", collected, f"KES · {start:%d %b} to {end:%d %b %Y}")
+        card("Worker payouts paid", sum(payout_by_property.values(), Decimal("0")), "Recorded worker payments in period")
         card("Open repair backlog", open_repairs.count(), "Across all your properties")
-        table("Property by property", ["Property", "Location", "Listing status", "Units", "Occupied", "Vacant", "Active leases", "Monthly rent (KES)", "Rent due now (KES)", "Confirmed stays in period", "Collected in period (KES)", "Open repairs"], property_rows)
+        table("Property by property", ["Property", "Location", "Listing status", "Units", "Occupied", "Vacant", "Active leases", "Monthly rent (KES)", "Rent due now (KES)", "Deposits held (KES)", "Deposits outstanding (KES)", "Confirmed stays in period", "Collected in period (KES)", "Worker payouts paid in period (KES)", "Open repairs"], property_rows)
         table("Maintenance activity", ["Property", "Unit", "Report", "Priority", "Status", "Reported"], [[r.property.title if r.property_id else r.property_name, r.unit.unit_number if r.unit_id else "—", r.title, r.priority, r.status, r.created_at.strftime("%d %b %Y")] for r in requests])
         table("Worker jobs", ["Property", "Job", "Worker", "Status", "Payout (KES)", "Posted"], [[j.property.title if j.property_id else j.location, j.title, (j.worker.get_full_name() or j.worker.username) if j.worker_id else "Unassigned", j.status, j.payout, j.created_at.strftime("%d %b %Y")] for j in jobs])
         table("Rental applications", ["Property", "Unit", "Applicant", "Status", "Submitted"], [[a.property.title, a.unit.unit_number if a.unit_id else "—", a.tenant.get_full_name() or a.tenant.username, a.status, a.created_at.strftime("%d %b %Y")] for a in applications])
         table("Worker payout ledger", ["Property", "Job", "Worker", "Status", "Amount (KES)", "Date"], [[p.job.property.title if p.job_id and p.job.property_id else "—", p.job.title if p.job_id else p.entity, p.job.worker.get_full_name() or p.job.worker.username if p.job_id and p.job.worker_id else "—", p.status, p.amount, p.created_at.strftime("%d %b %Y")] for p in payments if p.kind == "Worker payout"])
+        table("Monthly rent receipts", ["Property", "Unit", "Tenant", "Rent month", "Status", "Amount (KES)", "Received", "Method / reference"], [[p.lease.property.title, p.lease.unit.unit_number if p.lease.unit_id else "—", p.lease.tenant.get_full_name() or p.lease.tenant.username if p.lease.tenant_id else "—", p.billing_period.strftime("%B %Y") if p.billing_period else "—", p.status, p.amount, p.paid_at.strftime("%d %b %Y") if p.paid_at else "—", p.payment_reference or p.provider_receipt or p.payment_method or "—"] for p in payments if p.kind == "Rent payment" and p.lease_id])
+        table("Security deposit register", ["Property", "Unit", "Tenant", "Status", "Deposit (KES)", "Received", "Method / reference"], [[p.lease.property.title, p.lease.unit.unit_number if p.lease.unit_id else "—", p.lease.tenant.get_full_name() or p.lease.tenant.username if p.lease.tenant_id else "—", p.status, p.amount, p.paid_at.strftime("%d %b %Y") if p.paid_at else "—", p.payment_reference or p.provider_receipt or p.payment_method or "—"] for p in deposit_records])
     elif role == "tenant":
         leases = Lease.objects.filter(tenant=request.user).select_related("property", "unit").order_by("-start_date")
         active_leases = list(leases.filter(status="Active"))
-        dues = build_rent_schedule(active_leases, today=today)
+        dues = build_rent_schedule(leases, today=today, include_paid_history=True)
         payments = dated(Payment.objects.filter(user=request.user).select_related("lease__property", "booking__property").order_by("-created_at"))
         requests = dated(MaintenanceRequest.objects.filter(requester=request.user).select_related("property", "unit").order_by("-created_at"))
         applications = dated(RentalApplication.objects.filter(tenant=request.user).select_related("property", "unit").order_by("-created_at"))
+        deposit_records = Payment.objects.filter(lease__tenant=request.user, kind="Security deposit").select_related("lease__property", "lease__unit").order_by("-created_at")
         stays = Booking.objects.filter(tenant=request.user, check_in__lte=end, check_out__gte=start).select_related("property", "unit").order_by("-check_in")
         paid_total = sum((p.amount for p in payments if p.status == "Completed" and p.kind != "Worker payout"), Decimal("0"))
         outstanding = sum((d["amount"] for d in dues if d["status"] in {"Overdue", "Due today"}), Decimal("0"))
         card("Active homes", len(active_leases))
         card("Rent due now", outstanding, "Overdue or due today")
         card("Paid in period", paid_total, "Completed rent and stay payments")
+        card("Deposits paid", sum((p.amount for p in deposit_records if p.status == "Completed"), Decimal("0")))
+        card("Deposits due", sum((p.amount for p in deposit_records if p.status != "Completed"), Decimal("0")))
         card("Open maintenance reports", MaintenanceRequest.objects.filter(requester=request.user).exclude(status="Resolved").count(), "Current unresolved backlog")
-        table("My leases", ["Home", "Unit", "Status", "Rent (KES/month)", "Lease dates", "Due day"], [[l.property.title, l.unit.unit_number if l.unit_id else "—", l.status, l.rent, f"{l.start_date:%d %b %Y} – {l.end_date:%d %b %Y}", l.rent_due_day] for l in leases])
+        table("My leases", ["Home", "Unit", "Status", "Monthly rent (KES)", "Current term", "Deposit (KES)", "Due day"], [[l.property.title, l.unit.unit_number if l.unit_id else "—", l.status, l.rent, f"{l.start_date:%d %b %Y} – {current_month_term_end(l, today):%d %b %Y}" if l.status == "Active" and not lease_has_approved_moveout(l) else f"{l.start_date:%d %b %Y} – {l.end_date:%d %b %Y}", l.deposit_amount, l.rent_due_day] for l in leases])
         table("Rent due schedule", ["Home", "Unit", "Period", "Due date", "Amount (KES)", "Status"], [[d["lease"].property.title, d["lease"].unit.unit_number if d["lease"].unit_id else "—", d["period_label"], d["due_date"].strftime("%d %b %Y"), d["amount"], d["status"]] for d in dues])
         table("Payment activity", ["Description", "Type", "Status", "Amount (KES)", "Date", "Receipt"], [[p.lease.property.title if p.lease_id else p.booking.property.title if p.booking_id else p.entity, p.kind, p.status, p.amount, p.created_at.strftime("%d %b %Y"), p.provider_receipt or p.payment_reference or "—"] for p in payments])
+        table("Security deposits", ["Home", "Unit", "Status", "Deposit (KES)", "Received", "Method / reference"], [[p.lease.property.title, p.lease.unit.unit_number if p.lease.unit_id else "—", p.status, p.amount, p.paid_at.strftime("%d %b %Y") if p.paid_at else "—", p.payment_reference or p.provider_receipt or p.payment_method or "—"] for p in deposit_records])
         table("Maintenance reports", ["Home", "Unit", "Report", "Priority", "Status", "Reported"], [[r.property.title if r.property_id else r.property_name, r.unit.unit_number if r.unit_id else "—", r.title, r.priority, r.status, r.created_at.strftime("%d %b %Y")] for r in requests])
         table("Rental applications and stays", ["Home", "Type", "Dates / submitted", "Status", "Amount (KES)"], [[a.property.title, "Rental application", a.created_at.strftime("%d %b %Y"), a.status, "—"] for a in applications] + [[b.property.title, "Short stay", f"{b.check_in or b.date:%d %b %Y} – {b.check_out or b.date:%d %b %Y}", b.status, b.total_price or "—"] for b in stays])
     elif role == "worker":
@@ -1994,6 +2148,15 @@ def profile(request):
             {"label": "Active leases", "value": Lease.objects.filter(status="Active").count(), "href": "/oversight/"},
             {"label": "Open requests", "value": MaintenanceRequest.objects.exclude(status="Resolved").count(), "href": "/oversight/"},
         ]
+
+    if active_leases:
+        today = timezone.localdate()
+        for lease in active_leases:
+            lease.current_term_end = (
+                current_month_term_end(lease, today)
+                if not lease_has_approved_moveout(lease)
+                else lease.end_date
+            )
 
     deletion_block_reason = ""
     if user.is_superuser or role == "admin":
