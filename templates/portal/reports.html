@@ -15,6 +15,29 @@
   {% for item in cards %}<article class="metric"><small>{{ item.label }}</small><strong>{% if 'rent' in item.label|lower or 'collected' in item.label|lower or 'paid' in item.label|lower or 'payout' in item.label|lower %}KES {% endif %}{{ item.display_value }}</strong>{% if item.note %}<span>{{ item.note }}</span>{% endif %}</article>{% endfor %}
 </section>
 {% for item in tables %}
+{% if role == 'landlord' and item.title == 'Property by property' %}
+<section class="panel report-property-panel">
+  <div class="report-property-heading"><div><div class="eyebrow">YOUR HOMES</div><h2>Property by property</h2><p>Occupancy, rent, and follow-ups for each home in this portfolio.</p></div><span class="report-property-count">{{ property_cards|length }} propert{{ property_cards|length|pluralize:'y,ies' }}</span></div>
+  <div class="report-property-list">
+    {% for property in property_cards %}
+    <article class="report-property-card">
+      <header class="report-property-card-head"><div><span class="report-property-index">PROPERTY {{ forloop.counter|stringformat:'02d' }}</span><h3>{{ property.title }}</h3><p>{{ property.location }}</p></div><span class="badge {% if property.status == 'Available' %}green{% elif property.status == 'Pending review' %}amber{% endif %}">{{ property.status }}</span></header>
+      <div class="report-occupancy">
+        <div class="report-occupancy-label"><span>Occupancy</span>{% if property.unit_count %}<strong>{{ property.occupied }} of {{ property.unit_count }} units <small>· {{ property.vacant }} available</small></strong>{% else %}<strong>No units added yet</strong>{% endif %}</div>
+        {% if property.unit_count %}<div class="report-occupancy-track"><i style="width:{{ property.occupancy_percent }}%"></i></div>{% else %}<div class="report-occupancy-track is-empty"><i></i></div>{% endif %}
+      </div>
+      <div class="report-property-stats">
+        <div><span>Monthly rent</span><strong>KES {{ property.monthly_rent|floatformat:0 }}</strong><small>{{ property.lease_count }} active lease{{ property.lease_count|pluralize }}</small></div>
+        <div><span>Collected this period</span><strong>KES {{ property.collected|floatformat:0 }}</strong><small>{{ report_start|date:'M j' }} – {{ report_end|date:'M j' }}</small></div>
+        <div><span>Rent due now</span><strong>KES {{ property.rent_due|floatformat:0 }}</strong><small>Overdue or due today</small></div>
+      </div>
+      <div class="report-property-footer"><span class="report-followup {% if property.open_repairs %}has-items{% endif %}"><i></i>{{ property.open_repairs }} open repair{{ property.open_repairs|pluralize }}</span>{% if property.confirmed_stays %}<span class="report-property-stays">{{ property.confirmed_stays }} confirmed stay{{ property.confirmed_stays|pluralize }}</span>{% endif %}</div>
+      <details class="report-property-more"><summary>Deposit and payout details</summary><div><span>Deposits held <strong>KES {{ property.deposits_held|floatformat:0 }}</strong></span><span>Deposits outstanding <strong>KES {{ property.deposits_outstanding|floatformat:0 }}</strong></span><span>Worker payouts <strong>KES {{ property.worker_payouts|floatformat:0 }}</strong></span></div></details>
+    </article>
+    {% empty %}<div class="report-property-empty"><span>⌂</span><h3>No properties in this portfolio yet</h3><p>Once a property is added, its occupancy and rent summary will appear here.</p></div>{% endfor %}
+  </div>
+</section>
+{% else %}
 <section class="panel report-table-panel">
   <div class="panel-head"><h2>{{ item.title }}</h2><span>{{ item.rows|length }} record{{ item.rows|length|pluralize }}</span></div>
   <div class="table-scroll"><table class="report-table"><caption class="sr-only">{{ item.title }} for {{ role }} from {{ report_start|date:'M j, Y' }} to {{ report_end|date:'M j, Y' }}</caption>
@@ -22,6 +45,7 @@
     <tbody>{% for row in item.rows %}<tr>{% for cell in row %}<td>{{ cell|default:'—' }}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ item.headers|length }}" class="report-empty">No records for this period.</td></tr>{% endfor %}</tbody>
   </table></div>
 </section>
+{% endif %}
 {% endfor %}
 <p class="report-footnote">This report reflects information currently recorded in your EstateHub account. Payment totals include completed ledger entries only.</p>
 {% endblock %}
