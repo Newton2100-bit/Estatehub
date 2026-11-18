@@ -349,3 +349,106 @@
 :root[data-theme="dark"] .report-property-detail-row details{border-color:#344137}
 :root[data-theme="dark"] .report-property-detail-row details>div>span{border-color:#37453a;color:#a5b1a7}
 @media(max-width:700px){.report-property-panel{padding:18px 15px}.report-property-heading{align-items:flex-start}.report-property-table{min-width:740px}}
+
+/* Tenant dashboard refresh */
+.tenant-dashboard{max-width:1480px;margin:0 auto;padding-bottom:35px}
+.tenant-welcome{position:relative;display:flex;align-items:center;justify-content:space-between;gap:25px;min-height:190px;margin-bottom:19px;padding:29px 34px;overflow:hidden;border:1px solid #204a2a;border-radius:20px;background:linear-gradient(120deg,#14321b,#1c542a 68%,#246437);color:#fff}
+.tenant-welcome:before{position:absolute;right:12%;top:-95px;width:260px;height:260px;border:1px solid rgba(255,255,255,.09);border-radius:50%;box-shadow:0 0 0 28px rgba(255,255,255,.025),0 0 0 62px rgba(255,255,255,.02);content:""}
+.tenant-welcome-copy,.tenant-welcome-actions{position:relative;z-index:1}
+.tenant-welcome-label,.tenant-section-kicker{display:block;color:#6f9c77;font-size:9px;font-weight:900;letter-spacing:1.25px}
+.tenant-welcome-label{color:#b9d5bc}
+.tenant-welcome h1{margin:9px 0 5px;font-size:clamp(30px,3vw,41px);letter-spacing:-1.5px}
+.tenant-welcome h1 span{color:#8ee099}
+.tenant-welcome p{margin:0;color:#d3e2d4;font-size:13px}
+.tenant-welcome-actions{display:grid;justify-items:end;gap:10px}
+.tenant-welcome-actions .btn{background:#89d98e;border-color:#89d98e;color:#16351d}
+.tenant-quiet-action{color:#d9e8db;font-size:11px;font-weight:700}
+.tenant-welcome-art{position:absolute;right:34%;bottom:-48px;width:150px;height:150px;border:1px solid rgba(255,255,255,.12);border-radius:38px;transform:rotate(35deg);background:rgba(255,255,255,.025)}
+.tenant-welcome-art span{position:absolute;inset:20px;border:1px solid rgba(255,255,255,.09);border-radius:25px}
+.tenant-welcome-art span+span{inset:40px}
+.tenant-welcome-art i{position:absolute;inset:0;display:grid;place-items:center;color:rgba(206,240,210,.23);font-size:70px;font-style:normal;transform:rotate(-35deg)}
+.tenant-rent-overview{display:grid;grid-template-columns:minmax(265px,.82fr) minmax(0,1.5fr);gap:17px;margin-bottom:26px}
+.tenant-rent-focus{position:relative;isolation:isolate;overflow:hidden;min-height:300px;padding:23px 24px;border-radius:16px;background:linear-gradient(150deg,#eaf7eb,#f8fbf7 80%);border:1px solid #d8ead9}
+.tenant-rent-focus.is-due{background:linear-gradient(150deg,#fff7e9,#fffcf6 85%);border-color:#f0dfbd}
+.tenant-rent-focus-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tenant-rent-status{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#fff;color:#497252;font-size:9px;font-weight:800}
+.tenant-rent-focus.is-due .tenant-rent-status{background:#fff0d6;color:#99651e}
+.tenant-rent-status i{width:6px;height:6px;border-radius:50%;background:#48a75a}
+.tenant-rent-focus.is-due .tenant-rent-status i{background:#dba340}
+.tenant-rent-focus h2{position:relative;margin:32px 0 8px;font-size:18px;letter-spacing:-.4px}
+.tenant-rent-total{position:relative;display:block;color:#173a20;font:800 clamp(27px,3vw,38px)/1.1 Manrope;letter-spacing:-1px}
+.tenant-rent-focus p{position:relative;max-width:290px;margin:9px 0 17px;font-size:11px}
+.tenant-rent-link{position:relative;display:inline-flex;align-items:center;gap:9px;color:#28723a;font-size:11px;font-weight:900}
+.tenant-rent-link span{font-size:15px}
+.tenant-rent-decoration{position:absolute;right:-18px;bottom:-27px;z-index:-1;color:rgba(43,121,59,.07);font:900 68px Manrope;letter-spacing:-5px;transform:rotate(-12deg)}
+.tenant-rent-schedule{min-width:0;margin:0;padding:20px 21px}
+.tenant-section-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:13px}
+.tenant-section-heading h2{margin:4px 0 0;font-size:19px;letter-spacing:-.4px}
+.tenant-section-heading p{margin:5px 0 0;font-size:11px}
+.tenant-section-heading>a{display:inline-flex;align-items:center;gap:7px;color:#28723a;font-size:10px;font-weight:800;white-space:nowrap}
+.tenant-schedule-list{display:grid}
+.tenant-schedule-row{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:11px;padding:11px 0;border-top:1px solid #edf1ed}
+.tenant-schedule-date{display:grid;justify-items:center;align-content:center;width:37px;height:40px;border:1px solid #e7ece7;border-radius:9px;background:#f8faf7}
+.tenant-schedule-date strong{font:800 15px Manrope;line-height:1.1}
+.tenant-schedule-date small{color:var(--muted);font-size:8px;text-transform:uppercase}
+.tenant-schedule-copy{display:grid;gap:3px;min-width:0}
+.tenant-schedule-copy strong{overflow:hidden;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.tenant-schedule-copy>span{color:var(--muted);font-size:10px}
+.tenant-schedule-row .badge{white-space:nowrap}
+.tenant-schedule-empty{display:grid;justify-items:center;padding:29px 14px;text-align:center}
+.tenant-schedule-empty>span{display:grid;place-items:center;width:34px;height:34px;margin-bottom:8px;border-radius:10px;background:#eff6ef;color:#37834a}
+.tenant-schedule-empty p,.tenant-inline-empty{max-width:300px;margin:0;color:var(--muted);font-size:11px;text-align:center}
+.tenant-dashboard-section{margin:25px 0}
+.tenant-homes-section{padding:2px 0}
+.tenant-home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.tenant-home-card{min-width:0;padding:17px 18px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 5px 18px rgba(19,50,22,.035)}
+.tenant-home-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tenant-home-symbol,.tenant-empty-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#eaf5eb;color:#28723a;font-size:20px}
+.tenant-home-card h3{margin:0;font-size:16px}
+.tenant-home-location{margin:4px 0 13px;font-size:11px}
+.tenant-home-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:11px 0;border-top:1px solid #edf1ed;border-bottom:1px solid #edf1ed}
+.tenant-home-facts>div{display:grid;gap:3px;min-width:0}
+.tenant-home-facts span{color:var(--muted);font-size:9px}
+.tenant-home-facts strong{font-size:11px;overflow-wrap:anywhere}
+.tenant-home-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:13px}
+.tenant-home-actions .btn{font-size:10px}
+.tenant-updates-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.tenant-updates-panel{min-width:0;padding:19px 20px}
+.tenant-updates-panel .tenant-section-heading{margin-bottom:6px}
+.tenant-update-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:9px;padding:12px 0;border-top:1px solid #edf1ed}
+.tenant-update-mark{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;font-size:15px}
+.application-mark{background:#eff6ef;color:#37834a}
+.maintenance-mark{background:#fff4e3;color:#a66c19}
+.tenant-update-row>div{display:grid;gap:3px;min-width:0}
+.tenant-update-row>div strong{overflow:hidden;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+.tenant-update-row>div span{color:var(--muted);font-size:9px}
+.tenant-update-row .badge{white-space:nowrap}
+.tenant-small-empty{padding:16px 8px;text-align:center}
+.tenant-small-empty p{margin:0 0 6px;font-size:11px}
+.tenant-small-empty a{color:#28723a;font-size:10px;font-weight:800}
+.tenant-discover-section{padding:18px 20px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.tenant-discover-card{display:grid;grid-template-columns:74px minmax(0,1fr) auto 24px;align-items:center;gap:13px;padding:10px 0;border-top:1px solid #edf1ed}
+.tenant-discover-image{display:grid;place-items:center;width:74px;height:59px;overflow:hidden;border-radius:9px;background:#eef4ee;color:#829084;font-size:9px}
+.tenant-discover-image img{width:100%;height:100%;object-fit:cover}
+.tenant-discover-copy,.tenant-discover-price{display:grid;gap:4px;min-width:0}
+.tenant-discover-copy strong{overflow:hidden;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.tenant-discover-copy small,.tenant-discover-price small{color:var(--muted);font-size:9px}
+.tenant-discover-price{text-align:right}
+.tenant-discover-price strong{color:#28723a;font-size:11px;white-space:nowrap}
+.tenant-discover-arrow{color:#28723a;font-size:16px}
+.tenant-empty-state{display:flex;align-items:center;gap:13px;padding:19px;border:1px dashed #d7e2d7;border-radius:13px;background:#fafcf9}
+.tenant-empty-state>div{flex:1}
+.tenant-empty-state h3{margin:0 0 4px;font-size:14px}
+.tenant-empty-state p{margin:0;font-size:10px}
+:root[data-theme="dark"] .tenant-rent-focus{background:linear-gradient(150deg,#1d3522,#1b241d 85%);border-color:#344b38}
+:root[data-theme="dark"] .tenant-rent-focus.is-due{background:linear-gradient(150deg,#3b3020,#211f1a 85%);border-color:#59472a}
+:root[data-theme="dark"] .tenant-rent-total{color:#ddf1df}
+:root[data-theme="dark"] .tenant-rent-status,:root[data-theme="dark"] .tenant-schedule-date,:root[data-theme="dark"] .tenant-home-symbol,:root[data-theme="dark"] .application-mark,:root[data-theme="dark"] .tenant-discover-image{background:#26382a;color:#b6d9bc;border-color:#3a4e3e}
+:root[data-theme="dark"] .tenant-rent-focus.is-due .tenant-rent-status,:root[data-theme="dark"] .maintenance-mark{background:#44351f;color:#f0c57d}
+:root[data-theme="dark"] .tenant-home-facts,:root[data-theme="dark"] .tenant-update-row,:root[data-theme="dark"] .tenant-schedule-row,:root[data-theme="dark"] .tenant-discover-card{border-color:#344137}
+:root[data-theme="dark"] .tenant-home-card,:root[data-theme="dark"] .tenant-discover-section,:root[data-theme="dark"] .tenant-rent-schedule{background:var(--surface)}
+:root[data-theme="dark"] .tenant-discover-price strong,:root[data-theme="dark"] .tenant-section-heading>a,:root[data-theme="dark"] .tenant-rent-link,:root[data-theme="dark"] .tenant-small-empty a{color:#9be3a6}
+:root[data-theme="dark"] .tenant-empty-state{background:#202a22;border-color:#405247}
+@media(max-width:1050px){.tenant-rent-overview{grid-template-columns:1fr}.tenant-rent-focus{min-height:255px}.tenant-rent-focus h2{margin-top:24px}}
+@media(max-width:850px){.tenant-home-grid{grid-template-columns:1fr}.tenant-updates-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.tenant-welcome{align-items:flex-start;flex-direction:column;min-height:210px;padding:23px 21px}.tenant-welcome-actions{justify-items:start}.tenant-welcome-art{right:5%;bottom:-35px}.tenant-rent-focus{min-height:0;padding:20px}.tenant-rent-focus h2{margin-top:22px}.tenant-rent-schedule{padding:17px 14px}.tenant-schedule-row{grid-template-columns:36px minmax(0,1fr);gap:9px}.tenant-schedule-row .badge{grid-column:2;justify-self:start}.tenant-dashboard-section{margin:21px 0}.tenant-section-heading{align-items:flex-start}.tenant-section-heading h2{font-size:18px}.tenant-home-card{padding:15px}.tenant-home-actions{display:grid;grid-template-columns:1fr}.tenant-updates-panel{padding:17px 14px}.tenant-update-row{grid-template-columns:28px minmax(0,1fr)}.tenant-update-row .badge{grid-column:2;justify-self:start}.tenant-discover-section{padding:16px 13px}.tenant-discover-card{grid-template-columns:58px minmax(0,1fr) 18px;gap:9px}.tenant-discover-image{width:58px;height:52px}.tenant-discover-price{grid-column:2;grid-row:2;text-align:left}.tenant-discover-arrow{grid-column:3;grid-row:1/3}.tenant-empty-state{align-items:flex-start;flex-wrap:wrap}.tenant-empty-state .btn{margin-left:47px}}
