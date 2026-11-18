@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Post Building Work — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav">
+    <a class="brand" href="/">Estate<span>Hub</span></a>
+    <a href="/dashboard/management/">← Caretaker dashboard</a>
+    <a href="/logout/">Sign out</a>
+  </header>
+  <main class="public narrow">
+    <div class="eyebrow">WORKER DISPATCH</div>
+    <h1>Post building work</h1>
+    <p class="lead">Create a worker job for routine, preventative, or common-area work, even when no tenant has filed a complaint. Workers will see the location, task, and estimated payout.</p>
+    <section class="panel">
+      <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="btn" type="submit">Post job to workers</button>
+      </form>
+    </section>
+    <p><small>The job is limited to your assigned properties. The landlord will be notified when you post it.</small></p>
+  </main>
+</div>
+{% endblock %}
