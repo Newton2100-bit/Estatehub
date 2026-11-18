@@ -286,8 +286,8 @@ def dashboard(request, role=None):
         rent_due_items = [item for item in rent_dues if item["status"] in {"Overdue", "Due today"}]
         rent_due_total = sum((item["amount"] for item in rent_due_items), start=Decimal("0"))
         rent_due_count = len(rent_due_items)
-        applications = RentalApplication.objects.filter(tenant=request.user).select_related("property")
-        requests = MaintenanceRequest.objects.filter(requester=request.user).select_related("property")
+        applications = RentalApplication.objects.filter(tenant=request.user).select_related("property").order_by("-created_at")
+        requests = MaintenanceRequest.objects.filter(requester=request.user).select_related("property").order_by("-created_at")
         payments = Payment.objects.filter(user=request.user).select_related("lease", "lease__property")
     elif actual_role == "landlord" and not pending_landlord and not rejected_landlord:
         properties = Property.objects.filter(owner=request.user).order_by("-created_at").prefetch_related("images")
