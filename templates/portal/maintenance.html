@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Maintenance — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav"><a class="brand" href="/">Estate<span>Hub</span></a><nav><a href="/dashboard/">Dashboard</a><a class="active" href="/maintenance/">Maintenance</a>{% if role != 'management' %}<a href="/properties/">Properties</a>{% endif %}{% if role == 'tenant' or role == 'landlord' or role == 'admin' %}<a href="/payments/">Payments</a>{% endif %}</nav><a href="/logout/">Sign out</a></header>
+  <main class="maintenance-page">
+    <div class="maintenance-page-heading"><div><div class="eyebrow">MAINTENANCE</div><h1>{% if role == 'tenant' %}My complaints{% elif role == 'management' %}Caretaker reports{% else %}Maintenance requests{% endif %}</h1><p>{% if role == 'tenant' %}Report an issue at a home covered by your active lease and follow its progress.{% elif role == 'management' %}Review tenant reports or post building work for properties assigned to you.{% else %}Review tenant reports and coordinate repairs with workers.{% endif %}</p></div>{% if role == 'tenant' %}<a class="btn" href="#request-form">Report an issue</a>{% elif role == 'management' %}<a class="btn" href="/caretaker/jobs/post/">+ Post a worker job</a>{% endif %}</div>
+    <div class="maintenance-layout {% if role != 'tenant' %}maintenance-layout-wide{% endif %}">
+      <section class="maintenance-list-section">
+        <div class="maintenance-section-heading"><div><h2>Request history</h2><p>Each request shows its priority and current status.</p></div><span class="maintenance-count">{{requests|length}} total</span></div>
+        <div class="maintenance-list">
+          {% for x in requests %}
+          <article class="maintenance-card"><div class="maintenance-card-main">
+            <div class="maintenance-card-labels"><span class="badge {% if x.priority == 'Urgent' %}red{% elif x.priority == 'Normal' %}green{% else %}amber{% endif %}">{{x.priority}} priority</span><span class="maintenance-status {% if x.status == 'Resolved' %}is-resolved{% elif x.status == 'In Progress' %}is-progress{% else %}is-new{% endif %}">{{x.status}}</span></div>
+            <h3>{{x.title}}</h3><p class="maintenance-property">{{x.property.title|default:x.property_name}}{% if x.unit_id %} · Unit {{x.unit.unit_number}} · Floor {{x.unit.floor.number}}{% endif %}</p>
+            <div class="maintenance-meta"><span>{{x.category}}</span><span>Reported {{x.created_at|date:'M d, Y'}}</span>{% if role != 'tenant' and x.requester %}<span>Tenant: {{x.requester.get_full_name|default:x.requester.username}}</span>{% endif %}</div>
+            {% if x.description %}<p class="maintenance-description">{{x.description}}</p>{% endif %}
+            {% if role == 'landlord' or role == 'management' or role == 'admin' %}
+            <div class="maintenance-card-actions">
+              {% if x.job %}<a class="btn ghost" href="/jobs/{{x.job.id}}/">View worker job · {{x.job.status}}</a>
+              {% elif x.status != 'Resolved' %}
+                <a class="btn" href="/maintenance/{{x.id}}/post-job/">Post a worker job</a>
+                {% if x.status == 'New' %}<form method="post" action="/maintenance/{{x.id}}/status/progress/">{% csrf_token %}<button class="btn ghost" type="submit">Mark in progress</button></form>{% endif %}
+                <form method="post" action="/maintenance/{{x.id}}/status/resolved/">{% csrf_token %}<button class="btn ghost" type="submit">Mark resolved</button></form>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div></article>
+          {% empty %}<div class="maintenance-empty"><div class="maintenance-empty-icon">✓</div><h3>No requests yet</h3><p>{% if role == 'tenant' %}When you report a problem, it will appear here.{% elif role == 'management' %}Reports for properties assigned to you will appear here.{% else %}Tenant maintenance reports will appear here.{% endif %}</p></div>{% endfor %}
+        </div>
+      </section>
+      {% if role == 'tenant' %}<aside class="maintenance-form-card" id="request-form"><div class="maintenance-form-heading"><span class="maintenance-form-icon">＋</span><h2>Report an issue</h2><p>Tell your landlord or caretaker what needs attention.</p></div>{% if form.fields.lease.queryset %}<form method="post">{% csrf_token %}{{form.as_p}}<button class="btn" type="submit">Send complaint</button></form>{% else %}<div class="maintenance-no-lease"><b>No active lease found</b><p>You need an active lease before you can report an issue for a property.</p><a href="/properties/">Browse available homes</a></div>{% endif %}</aside>{% endif %}
+    </div>
+  </main>
+</div>
+{% endblock %}
