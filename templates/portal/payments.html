@@ -3,11 +3,19 @@
 {% block body %}
 <div class="app-lite">
   <header class="nav"><a class="brand" href="/">Estate<span>Hub</span></a><nav><a href="/dashboard/">Dashboard</a>{% if role == 'worker' %}<a href="/jobs/">Jobs</a>{% else %}<a href="/leases/">Leases</a>{% endif %}<a class="active" href="/payments/">Payments</a></nav><a href="/logout/">Logout</a></header>
-  <main class="public wrap">
-    <div class="eyebrow">{% if role == 'worker' %}WORKER PAYOUTS{% else %}PAYMENTS LEDGER{% endif %}</div>
-    <h1>{% if role == 'worker' %}My payout ledger{% elif role == 'landlord' %}Rent, deposits and worker payouts{% elif role == 'admin' %}Payment records{% else %}My rent and deposit ledger{% endif %}</h1>
-    {% if role == 'worker' %}<p class="lead">Track completed job payouts here. Add your M-Pesa number in <a href="/profile/">your profile</a> so a landlord can send an automated payout when Daraja B2C is enabled.</p>{% elif role == 'landlord' %}<p class="lead">Review rent receipts and pay workers after completed jobs. Automated worker transfers use EstateHub’s configured M-Pesa B2C account; you can also record an external transfer you have already sent.</p>{% endif %}
-    {% if role == 'worker' or role == 'landlord' or role == 'admin' %}<div class="metric-grid"><div class="metric"><small>Awaiting worker payment</small><strong>KES {{pending_payout_total|floatformat:2}}</strong></div><div class="metric"><small>Recorded paid</small><strong>KES {{paid_payout_total|floatformat:2}}</strong></div></div>{% endif %}
+  <main class="public wrap payments-page">
+    <div class="eyebrow">{% if role == 'landlord' %}LANDLORD FINANCES{% elif role == 'worker' %}WORKER PAYOUTS{% else %}PAYMENTS LEDGER{% endif %}</div>
+    <h1>{% if role == 'worker' %}My payout ledger{% elif role == 'landlord' %}Payments{% elif role == 'admin' %}Payment records{% else %}My rent and deposit ledger{% endif %}</h1>
+    {% if role == 'worker' %}<p class="lead">Track completed job payouts here. Add your M-Pesa number in <a href="/profile/">your profile</a> so a landlord can send an automated payout when Daraja B2C is enabled.</p>{% elif role == 'landlord' %}<p class="lead">Review tenant receipts and handle worker payouts from separate, easy-to-scan lists.</p>{% endif %}
+    {% if role == 'landlord' %}
+      <section class="landlord-payment-summary" aria-label="Payment summary">
+        <article class="landlord-payment-metric"><span>Rent & stay income received</span><strong>KES {{rent_received_total|floatformat:2}}</strong><small>Completed ledger receipts</small></article>
+        <article class="landlord-payment-metric"><span>Security deposits held</span><strong>KES {{deposit_held_total|floatformat:2}}</strong><small>Recorded as received</small></article>
+        <article class="landlord-payment-metric is-pending"><span>Worker payouts awaiting</span><strong>KES {{pending_payout_total|floatformat:2}}</strong><small>Jobs completed, payment due</small></article>
+        <article class="landlord-payment-metric"><span>Worker payouts paid</span><strong>KES {{paid_payout_total|floatformat:2}}</strong><small>Recorded as paid</small></article>
+      </section>
+      <nav class="payment-section-nav" aria-label="Payment sections"><a href="#rent-deposits">Rent & deposit receipts</a><a href="#worker-payouts">Worker payouts{% if pending_payout_total %}<span class="badge amber">Action needed</span>{% endif %}</a></nav>
+    {% elif role == 'worker' or role == 'admin' %}<div class="metric-grid"><div class="metric"><small>Awaiting worker payment</small><strong>KES {{pending_payout_total|floatformat:2}}</strong></div><div class="metric"><small>Recorded paid</small><strong>KES {{paid_payout_total|floatformat:2}}</strong></div></div>{% endif %}
 
     {% if role == 'tenant' %}
     <section class="panel rent-payment-panel">
@@ -26,6 +34,7 @@
 
     {% if role == 'tenant' and bookings %}<section class="panel rent-payment-panel"><div class="panel-head"><div><h2>Pay for a confirmed stay</h2><p>Payment is requested only after the host confirms your dates.</p></div></div>{% for booking in bookings %}<article class="rent-payment-item"><div><b>{{booking.property.title}} · Unit {{booking.unit.unit_number|default:'1'}}</b><small>{{booking.check_in|date:'M d, Y'}} to {{booking.check_out|date:'M d, Y'}} · {{booking.guests}} guest{{booking.guests|pluralize}}</small>{% with latest=booking.stay_payments|first %}{% if latest %}<small>Latest payment: {{latest.status}}{% if latest.provider_receipt %} · Receipt {{latest.provider_receipt}}{% endif %}</small>{% endif %}{% endwith %}</div><div><strong>KES {{booking.total_price|floatformat:2}}</strong>{% with latest=booking.stay_payments|first %}{% if stk_configured %}{% if not latest or latest.status == 'Failed' %}<form method="post" class="payment-init-form">{% csrf_token %}<input type="hidden" name="action" value="initiate_booking_payment"><input type="hidden" name="booking" value="{{booking.id}}"><label>M-Pesa phone number<input name="phone" value="{{profile.phone}}" placeholder="0712345678" autocomplete="tel" inputmode="tel" required></label><button class="btn small" type="submit">Pay now</button></form>{% endif %}{% else %}<small>M-Pesa setup needed</small>{% endif %}{% endwith %}</div></article>{% endfor %}</section>{% endif %}
 
+    {% if role == 'landlord' %}{% include 'portal/_landlord_payments.html' %}{% else %}
     <section class="panel"><div class="panel-head"><h2>{% if role == 'worker' %}Jobs and payout status{% else %}Payment history{% endif %}</h2></div>
       <div class="table-scroll"><table><thead><tr><th>Job / property</th><th>Type</th><th>Worker / account</th><th>Date</th><th>Amount</th><th>Status</th>{% if role == 'landlord' or role == 'admin' %}<th>Action</th>{% endif %}</tr></thead><tbody>
       {% for p in payments %}<tr>
@@ -42,6 +51,7 @@
       </tr>{% empty %}<tr><td colspan="7">No payment records yet. Worker payouts appear after completed jobs.</td></tr>{% endfor %}
       </tbody></table></div>
     </section>
+    {% endif %}
   </main>
 </div>
 {% endblock %}
