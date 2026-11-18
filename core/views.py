@@ -1961,23 +1961,101 @@ def worker_job_action(request, pk, action):
 def analytics(request):
     role = current_role(request.user)
     if role == "landlord":
-        properties = Property.objects.filter(owner=request.user)
+        properties = Property.objects.filter(owner=request.user).order_by("title")
         payments = Payment.objects.filter(lease__property__owner=request.user)
     elif role == "admin":
-        properties = Property.objects.all()
+        properties = Property.objects.all().order_by("title")
         payments = Payment.objects.all()
     else:
         raise PermissionDenied
-    leases = Lease.objects.filter(property__in=properties, status="Active")
-    total_recorded = payments.aggregate(total=Sum("amount"))["total"] or 0
+
+    property_ids = properties.values_list("pk", flat=True)
+    active_leases = Lease.objects.filter(property_id__in=property_ids, status="Active")
+    units = RentalUnit.objects.filter(floor__property_id__in=property_ids)
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+    month_labels = []
+    month_keys = []
+    for offset in range(5, -1, -1):
+        month_index = month_start.month - 1 - offset
+        year = month_start.year + month_index // 12
+        month = month_index % 12 + 1
+        month_keys.append((year, month))
+        month_labels.append(calendar.month_abbr[month])
+
+    collected_rows = payments.filter(
+        kind="Rent payment", status__in=["Completed", "Paid"],
+        created_at__date__gte=date(month_keys[0][0], month_keys[0][1], 1),
+    ).values("created_at__year", "created_at__month").annotate(total=Sum("amount"))
+    monthly_totals = {(row["created_at__year"], row["created_at__month"]): row["total"] for row in collected_rows}
+    monthly_values = [monthly_totals.get(key, Decimal("0")) for key in month_keys]
+    max_monthly = max(monthly_values, default=Decimal("0")) or Decimal("1")
+    chart_points = []
+    for index, amount in enumerate(monthly_values):
+        x = round(24 + index * 110.4, 1)
+        y = round(176 - float(amount / max_monthly) * 142, 1)
+        chart_points.append({"x": x, "y": y, "amount": amount, "label": month_labels[index]})
+    line_points = " ".join(f"{point['x']},{point['y']}" for point in chart_points)
+    area_points = f"24,190 {line_points} 576,190"
+    month_total = sum(monthly_values, Decimal("0"))
+    prior_total = sum(monthly_values[:3], Decimal("0"))
+    recent_total = sum(monthly_values[3:], Decimal("0"))
+    trend_percent = round(float((recent_total - prior_total) / prior_total * 100), 1) if prior_total else None
+
+    status_order = ["Available", "Rented", "Pending", "Inspection", "Rejected", "Sold"]
+    status_counts = dict(properties.values_list("status").annotate(total=Count("pk")))
+    status_colors = {"Available": "#167a32", "Rented": "#57b969", "Pending": "#edaa38", "Inspection": "#4383ce", "Rejected": "#db6a5f", "Sold": "#9a83c7"}
+    status_distribution = []
+    property_total = properties.count()
+    pie_segments = []
+    angle = 0.0
+    for status in status_order:
+        count = status_counts.get(status, 0)
+        if not count:
+            continue
+        share = count / property_total * 100 if property_total else 0
+        status_distribution.append({"label": status, "count": count, "percent": round(share), "color": status_colors[status]})
+        next_angle = angle + share * 3.6
+        pie_segments.append(f"{status_colors[status]} {angle:.2f}deg {next_angle:.2f}deg")
+        angle = next_angle
+    status_pie_style = "conic-gradient(" + ", ".join(pie_segments) + ")" if pie_segments else "conic-gradient(#e8eee8 0deg 360deg)"
+
+    total_recorded = payments.filter(status__in=["Completed", "Paid"]).aggregate(total=Sum("amount"))["total"] or 0
+    rent_collected = payments.filter(kind="Rent payment", status__in=["Completed", "Paid"]).aggregate(total=Sum("amount"))["total"] or 0
+    active_lease_count = active_leases.count()
+    total_units = units.count()
+    rented_units = units.filter(status="Rented").count()
+    occupancy_rate = round(rented_units / total_units * 100) if total_units else 0
+    top_properties = list(properties.annotate(
+        active_lease_count=Count("leases", filter=Q(leases__status="Active")),
+        unit_count=Count("floors__units", distinct=True),
+    ).order_by("-active_lease_count", "title")[:5])
+    max_property_leases = max((item.active_lease_count for item in top_properties), default=0) or 1
+    for item in top_properties:
+        item.lease_bar_width = round(item.active_lease_count / max_property_leases * 100)
+
     return render(request, "portal/analytics.html", {
         "properties": properties,
-        "payments": payments,
-        "property_count": properties.count(),
-        "active_lease_count": leases.count(),
+        "property_count": property_total,
+        "active_lease_count": active_lease_count,
         "recorded_total": total_recorded,
+        "rent_collected": rent_collected,
+        "month_total": month_total,
+        "month_labels": month_labels,
+        "chart_points": chart_points,
+        "line_points": line_points,
+        "area_points": area_points,
+        "trend_percent": trend_percent,
+        "status_distribution": status_distribution,
+        "status_pie_style": status_pie_style,
+        "occupancy_rate": occupancy_rate,
+        "total_units": total_units,
+        "rented_units": rented_units,
+        "available_units": units.filter(status="Available").count(),
+        "top_properties": top_properties,
+        "pending_application_count": RentalApplication.objects.filter(property_id__in=property_ids, status="Pending").count(),
         "unresolved_request_count": MaintenanceRequest.objects.filter(
-            property__in=properties
+            property_id__in=property_ids
         ).exclude(status="Resolved").count(),
     })
 
