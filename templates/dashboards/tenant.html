@@ -1,9 +1,82 @@
 {% extends 'dashboards/_shell.html' %}
 {% block title %}Tenant Dashboard{% endblock %}
 {% block dashboard %}
-<div class="page-head"><div><div class="eyebrow">TENANT DASHBOARD</div><h1>Welcome{% if request.user.first_name %}, {{request.user.first_name}}{% endif %}.</h1><p>Find a home, follow your applications, and look after your rented property.</p></div><a class="btn" href="/properties/">Browse properties</a></div>
-<div class="metric-grid"><div class="metric"><small>Active leases</small><strong>{{leases|length}}</strong><a href="/leases/">View leases</a></div><div class="metric"><small>Applications</small><strong>{{applications|length}}</strong><span>Including pending reviews</span></div><div class="metric"><small>Open complaints</small><strong>{{requests|length}}</strong><a href="/maintenance/">View maintenance</a></div><div class="metric"><small>Rent due now</small><strong>KES {{rent_due_total|floatformat:2}}</strong><span>{{rent_due_count}} month{{rent_due_count|pluralize}} due or overdue</span><a href="/payments/">View rent schedule</a></div></div>
-{% if leases %}<section class="panel rent-payment-panel"><div class="panel-head"><div><h2>Rent schedule</h2><p>Check each active lease’s due date and payment status.</p></div><a href="/payments/">Open payments</a></div><div class="rent-payment-list">{% for due in rent_dues %}<article class="rent-payment-item rent-due-item"><div><b>{{due.lease.property.title}} · Unit {{due.lease.unit.unit_number|default:'1'}} · {{due.period_label}}</b><small>KES {{due.amount|floatformat:2}} · Due {{due.due_date|date:'M j, Y'}}</small></div><span class="badge {% if due.status == 'Paid' %}green{% elif due.status == 'Overdue' or due.status == 'Needs payment review' %}red{% elif due.status == 'Due today' %}amber{% else %}green{% endif %}">{{due.status}}</span>{% if due.payable %}<a class="btn small" href="/payments/">Pay this month</a>{% endif %}</article>{% endfor %}</div></section>{% endif %}
-<div class="content-grid"><section class="panel"><div class="panel-head"><h2>My rented homes</h2><a href="/leases/">View leases</a></div>{% for lease in leases %}<article class="property-row tenant-rented-home"><div class="thumb"></div><div><b>{{lease.property.title}} · Unit {{lease.unit.unit_number|default:'1'}}</b><small>{{lease.property.location}} · Current monthly term ends {{lease.current_term_end}}</small></div><a href="/payments/">Payments</a><a class="btn small ghost" href="/leases/{{lease.id}}/move-out/">Request a renewal or move-out</a></article>{% empty %}<p>You have no active leases. Approved available homes are ready to browse.</p>{% endfor %}</section><section class="panel"><div class="panel-head"><h2>My applications</h2><a href="/properties/">Browse homes</a></div>{% for application in applications %}<p><b>{{application.property.title}}</b> — <span class="badge">{{application.status}}</span></p>{% empty %}<p>You have not applied to rent a home yet.</p>{% endfor %}</section></div>
-<section class="panel"><div class="panel-head"><h2>Recommended properties</h2><a href="/properties/">View marketplace</a></div>{% for p in properties %}<a class="property-row" href="/property/{{p.id}}/">{% with cover=p.images.first %}<div class="thumb">{% if cover %}<img src="{{cover.image.url}}" alt="{{p.title}} property photo">{% endif %}</div>{% endwith %}<div><b>{{p.title}}</b><small>{{p.location}}</small></div><strong>From KES {{p.starting_rent|floatformat:0}}/mo · {{p.available_unit_count}} units</strong></a>{% empty %}<p>No available listings right now.</p>{% endfor %}</section>
+<div class="tenant-dashboard">
+  <section class="tenant-welcome">
+    <div class="tenant-welcome-copy">
+      <span class="tenant-welcome-label">TENANT HOME</span>
+      <h1>{% if request.user.first_name %}Hi {{ request.user.first_name }}{% else %}Welcome home{% endif %}<span>.</span></h1>
+      <p>Your rent, home, and requests in one simple place.</p>
+    </div>
+    <div class="tenant-welcome-actions">
+      <a class="btn" href="/properties/">Find a home <span>↗</span></a>
+      <a class="tenant-quiet-action" href="/maintenance/">Get maintenance help</a>
+    </div>
+    <div class="tenant-welcome-art" aria-hidden="true"><span></span><span></span><i>⌂</i></div>
+  </section>
+
+  <section class="tenant-rent-overview" aria-label="Rent overview">
+    <div class="tenant-rent-focus {% if rent_due_count %}is-due{% endif %}">
+      <div class="tenant-rent-focus-top"><span class="tenant-section-kicker">RENT AT A GLANCE</span><span class="tenant-rent-status"><i></i>{% if rent_due_count %}Action needed{% else %}All clear{% endif %}</span></div>
+      {% if leases %}
+        <h2>{% if rent_due_count %}Rent to take care of{% else %}Nothing due right now{% endif %}</h2>
+        <strong class="tenant-rent-total">KES {{ rent_due_total|floatformat:0 }}</strong>
+        <p>{% if rent_due_count %}{{ rent_due_count }} rent item{{ rent_due_count|pluralize }} due today or overdue.{% else %}Your current rent schedule is up to date.{% endif %}</p>
+        <a class="tenant-rent-link" href="/payments/">Open rent schedule <span>→</span></a>
+      {% else %}
+        <h2>Your next home starts here</h2><strong class="tenant-rent-total">Ready when you are</strong><p>You don’t have an active lease yet. Browse homes and apply when you find the right fit.</p><a class="tenant-rent-link" href="/properties/">Browse available homes <span>→</span></a>
+      {% endif %}
+      <div class="tenant-rent-decoration" aria-hidden="true">KES</div>
+    </div>
+    <div class="tenant-rent-schedule panel">
+      <div class="tenant-section-heading"><div><span class="tenant-section-kicker">UP NEXT</span><h2>Rent schedule</h2></div><a href="/payments/">See all</a></div>
+      {% if leases %}
+        <div class="tenant-schedule-list">
+          {% for due in rent_dues|slice:':4' %}
+          <article class="tenant-schedule-row">
+            <span class="tenant-schedule-date"><strong>{{ due.due_date|date:'d' }}</strong><small>{{ due.due_date|date:'M' }}</small></span>
+            <div class="tenant-schedule-copy"><strong>{{ due.lease.property.title }} · Unit {{ due.lease.unit.unit_number|default:'1' }}</strong><span>{{ due.period_label }} · KES {{ due.amount|floatformat:0 }}</span></div>
+            <span class="badge {% if due.status == 'Paid' %}green{% elif due.status == 'Overdue' or due.status == 'Needs payment review' %}red{% elif due.status == 'Due today' %}amber{% else %}blue{% endif %}">{{ due.status }}</span>
+          </article>
+          {% empty %}<p class="tenant-inline-empty">No rent schedule is available for your current lease.</p>{% endfor %}
+        </div>
+      {% else %}<div class="tenant-schedule-empty"><span>⌂</span><p>Your monthly rent schedule will appear here after your first lease is approved.</p></div>{% endif %}
+    </div>
+  </section>
+
+  <section class="tenant-dashboard-section tenant-homes-section">
+    <div class="tenant-section-heading"><div><span class="tenant-section-kicker">YOUR PLACE</span><h2>Your homes</h2><p>Lease details and the next steps for each home.</p></div><a href="/leases/">Lease details <span>→</span></a></div>
+    {% if leases %}<div class="tenant-home-grid">
+      {% for lease in leases %}
+      <article class="tenant-home-card">
+        <div class="tenant-home-card-head"><span class="tenant-home-symbol" aria-hidden="true">⌂</span><span class="badge green">{{ lease.status }}</span></div>
+        <h3>{{ lease.property.title }}</h3><p class="tenant-home-location">{{ lease.property.location }} · Unit {{ lease.unit.unit_number|default:'1' }}</p>
+        <div class="tenant-home-facts"><div><span>Monthly rent</span><strong>KES {{ lease.rent|floatformat:0 }}</strong></div><div><span>Current term ends</span><strong>{{ lease.current_term_end|date:'M j, Y' }}</strong></div></div>
+        <div class="tenant-home-actions"><a class="btn small" href="/payments/">Rent and payments</a><a class="btn small ghost" href="/leases/{{ lease.id }}/move-out/">Request a renewal or move-out</a></div>
+      </article>
+      {% endfor %}
+    </div>{% else %}<div class="tenant-empty-state"><span class="tenant-empty-icon">⌂</span><div><h3>No rented home yet</h3><p>When an application is approved, your lease details and move-out options will appear here.</p></div><a class="btn small" href="/properties/">Browse homes</a></div>{% endif %}
+  </section>
+
+  <div class="tenant-updates-grid">
+    <section class="panel tenant-updates-panel">
+      <div class="tenant-section-heading"><div><span class="tenant-section-kicker">APPLICATIONS</span><h2>Finding a home</h2></div><a href="/properties/">Browse <span>→</span></a></div>
+      {% for application in applications|slice:':4' %}<article class="tenant-update-row"><span class="tenant-update-mark application-mark">⌂</span><div><strong>{{ application.property.title }}</strong><span>Applied {{ application.created_at|date:'M j, Y' }}</span></div><span class="badge {% if application.status == 'Approved' %}green{% elif application.status == 'Rejected' %}red{% else %}amber{% endif %}">{{ application.status }}</span></article>{% empty %}<div class="tenant-small-empty"><p>No applications yet.</p><a href="/properties/">Explore homes in the marketplace →</a></div>{% endfor %}
+    </section>
+    <section class="panel tenant-updates-panel">
+      <div class="tenant-section-heading"><div><span class="tenant-section-kicker">HOME CARE</span><h2>Maintenance updates</h2></div><a href="/maintenance/">Open maintenance <span>→</span></a></div>
+      {% for report in requests|slice:':4' %}<article class="tenant-update-row"><span class="tenant-update-mark maintenance-mark">⌁</span><div><strong>{{ report.title }}</strong><span>{{ report.property.title|default:report.property_name }} · {{ report.created_at|date:'M j' }}</span></div><span class="badge {% if report.status == 'Resolved' %}green{% elif report.status == 'In Progress' %}blue{% else %}amber{% endif %}">{{ report.status }}</span></article>{% empty %}<div class="tenant-small-empty"><p>No maintenance requests to follow up.</p><a href="/maintenance/">Report a home issue →</a></div>{% endfor %}
+    </section>
+  </div>
+
+  <section class="tenant-dashboard-section tenant-discover-section">
+    <div class="tenant-section-heading"><div><span class="tenant-section-kicker">A PLACE TO CALL HOME</span><h2>Homes you can explore</h2><p>Available listings picked from the marketplace.</p></div><a href="/properties/">Explore all homes <span>→</span></a></div>
+    {% for p in properties %}
+      <a class="tenant-discover-card" href="/property/{{ p.id }}/">
+        {% with cover=p.images.first %}<span class="tenant-discover-image">{% if cover %}<img src="{{ cover.image.url }}" alt="{{ p.title }} property photo">{% else %}<span>EstateHub home</span>{% endif %}</span>{% endwith %}
+        <span class="tenant-discover-copy"><strong>{{ p.title }}</strong><small>{{ p.location }}</small></span><span class="tenant-discover-price"><strong>KES {{ p.starting_rent|floatformat:0 }}</strong><small>per month · {{ p.available_unit_count }} available</small></span><span class="tenant-discover-arrow">→</span>
+      </a>
+    {% empty %}<div class="tenant-small-empty"><p>No available listings right now.</p><a href="/properties/">Check the marketplace later →</a></div>{% endfor %}
+  </section>
+</div>
 {% endblock %}
