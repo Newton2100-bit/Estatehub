@@ -14,6 +14,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.models import User
 from django.contrib.auth import update_session_auth_hash
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Min, Prefetch, Q, Sum
 from django.http import HttpResponse, JsonResponse
@@ -1385,6 +1386,50 @@ def leases(request):
         qs = Lease.objects.all()
     else:
         raise PermissionDenied
+    search_query = ""
+    selected_property = ""
+    selected_status = ""
+    landlord_properties = Property.objects.none()
+    page_obj = None
+    filtered_lease_count = qs.count()
+    active_lease_count = 0
+    ended_lease_count = 0
+    pending_moveout_count = 0
+    if role == "landlord":
+        landlord_properties = Property.objects.filter(owner=request.user).order_by("title")
+        active_lease_count = qs.filter(status="Active").count()
+        ended_lease_count = qs.filter(status="Ended").count()
+        pending_moveout_count = LeaseChangeRequest.objects.filter(
+            lease__property__owner=request.user,
+            request_type="move_out",
+            status="Pending",
+        ).count()
+        search_query = request.GET.get("q", "").strip()[:100]
+        selected_property = request.GET.get("property", "").strip()
+        selected_status = request.GET.get("status", "").strip()
+        search_terms = search_query.split()
+        for search_term in search_terms:
+            qs = qs.filter(
+                Q(property__title__icontains=search_term)
+                | Q(property__location__icontains=search_term)
+                | Q(unit__unit_number__icontains=search_term)
+                | Q(tenant__username__icontains=search_term)
+                | Q(tenant__first_name__icontains=search_term)
+                | Q(tenant__last_name__icontains=search_term)
+                | Q(tenant__email__icontains=search_term)
+            )
+        if selected_property.isdigit() and landlord_properties.filter(pk=selected_property).exists():
+            qs = qs.filter(property_id=selected_property)
+        else:
+            selected_property = ""
+        if selected_status in {"Active", "Ended"}:
+            qs = qs.filter(status=selected_status)
+        else:
+            selected_status = ""
+        qs = qs.order_by("-start_date", "-pk")
+        paginator = Paginator(qs, 8)
+        page_obj = paginator.get_page(request.GET.get("page"))
+        filtered_lease_count = paginator.count
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "request_lease_change":
@@ -1600,7 +1645,8 @@ def leases(request):
             messages.success(request, f"Rent received for {billing_period:%B %Y} was recorded.")
             return redirect("leases")
         raise PermissionDenied
-    lease_rows = list(qs.select_related("property", "tenant", "unit").prefetch_related("change_requests").order_by("-start_date"))
+    lease_queryset = page_obj.object_list if page_obj is not None else qs.order_by("-start_date", "-pk")
+    lease_rows = list(lease_queryset.select_related("property", "tenant", "unit").prefetch_related("change_requests"))
     deposit_by_lease = {}
     for deposit in Payment.objects.filter(lease_id__in=[item.pk for item in lease_rows], kind="Security deposit").order_by("created_at"):
         deposit_by_lease[deposit.lease_id] = deposit
@@ -1622,6 +1668,15 @@ def leases(request):
         "leases": lease_rows, "role": role,
         "current_billing_period": today.strftime("%Y-%m"),
         "today": today,
+        "page_obj": page_obj,
+        "landlord_properties": landlord_properties,
+        "search_query": search_query,
+        "selected_property": selected_property,
+        "selected_status": selected_status,
+        "filtered_lease_count": filtered_lease_count,
+        "active_lease_count": active_lease_count,
+        "ended_lease_count": ended_lease_count,
+        "pending_moveout_count": pending_moveout_count,
     })
 
 
