@@ -1328,6 +1328,9 @@ def leases(request):
             if not (today <= proposed_end_date <= current_term_end):
                 messages.error(request, f"Move-out date must be today or later and no later than the current monthly term end ({current_term_end:%d %b %Y}).")
                 return redirect("leases")
+            if lease.change_requests.filter(request_type="move_out", status="Approved").exists():
+                messages.error(request, "A move-out date has already been approved for this lease.")
+                return redirect("leases")
             proposed_rent = None
             if request.POST.get("proposed_rent", "").strip():
                 try:
@@ -1527,6 +1530,12 @@ def leases(request):
     today = timezone.localdate()
     for lease in lease_rows:
         lease.deposit_payment = deposit_by_lease.get(lease.pk)
+        changes = list(lease.change_requests.all())
+        lease.pending_change_request = next((change for change in changes if change.status == "Pending"), None)
+        lease.approved_moveout_request = next((
+            change for change in changes
+            if change.request_type == "move_out" and change.status == "Approved"
+        ), None)
         lease.current_term_end = (
             current_month_term_end(lease, today)
             if lease.status == "Active" and not lease_has_approved_moveout(lease)
