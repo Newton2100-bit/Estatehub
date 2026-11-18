@@ -1,0 +1,3 @@
+{% extends 'base.html' %}{% block title %}Edit Unit — EstateHub{% endblock %}{% block body %}
+<div class="app-lite"><header class="nav"><a class="brand" href="/">Estate<span>Hub</span></a><a href="/property/{{property.id}}/">← {{property.title}}</a><a href="/logout/">Sign out</a></header><main class="public narrow"><div class="eyebrow">UNIT DETAILS</div><h1>Edit Unit {{unit.unit_number}}</h1><p class="lead">{{property.title}} · {{unit.floor.label|default:unit.floor.number}}</p><section class="panel"><p>Changing the listed rent applies to future rentals. Existing leases keep the rent agreed in their lease record.</p><form method="post">{% csrf_token %}{{form.as_p}}<button class="btn" type="submit">Save unit details</button></form></section></main></div>
+{% endblock %}
