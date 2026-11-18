@@ -290,12 +290,12 @@ def dashboard(request, role=None):
         requests = MaintenanceRequest.objects.filter(requester=request.user).select_related("property")
         payments = Payment.objects.filter(user=request.user).select_related("lease", "lease__property")
     elif actual_role == "landlord" and not pending_landlord and not rejected_landlord:
-        properties = Property.objects.filter(owner=request.user).prefetch_related("images")
-        requests = MaintenanceRequest.objects.filter(property__owner=request.user).select_related("property", "requester")
+        properties = Property.objects.filter(owner=request.user).order_by("-created_at").prefetch_related("images")
+        requests = MaintenanceRequest.objects.filter(property__owner=request.user).select_related("property", "requester").order_by("-created_at")
         jobs = Job.objects.filter(property__owner=request.user).select_related("property", "worker")
-        leases = Lease.objects.filter(property__owner=request.user, status="Active").select_related("property", "tenant")
-        payments = Payment.objects.filter(lease__property__owner=request.user).select_related("lease", "user")
-        applications = RentalApplication.objects.filter(property__owner=request.user).select_related("property", "tenant")
+        leases = Lease.objects.filter(property__owner=request.user, status="Active").select_related("property", "tenant").order_by("-start_date", "-pk")
+        payments = Payment.objects.filter(lease__property__owner=request.user).select_related("lease", "user").order_by("-created_at")
+        applications = RentalApplication.objects.filter(property__owner=request.user).select_related("property", "unit", "tenant").order_by("-created_at")
     elif actual_role == "worker":
         jobs = Job.objects.filter(Q(status="Open") | Q(worker=request.user)).select_related("property")
         worker_payouts = Payment.objects.filter(job__worker=request.user, kind="Worker payout")
