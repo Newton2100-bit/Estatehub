@@ -232,3 +232,38 @@
 @media(max-width:850px){.analytics-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.analytics-main-grid,.analytics-lower-grid{grid-template-columns:1fr}.analytics-donut-layout{grid-template-columns:156px minmax(0,1fr)}.analytics-donut{width:146px;height:146px}}
 @media(max-width:600px){.analytics-page-head{display:block}.analytics-head-actions{margin-top:15px}.analytics-kpis{gap:9px}.analytics-kpi{min-height:128px;padding:15px}.analytics-kpi strong{font-size:23px}.analytics-kpi>span:last-child{font-size:10px}.analytics-chart-card,.analytics-breakdown-card,.analytics-insight-card{padding:18px 16px}.analytics-card-heading{gap:8px}.analytics-card-heading h2,.analytics-insight-card h2{font-size:19px}.analytics-total strong{font-size:14px}.analytics-chart-wrap{grid-template-columns:22px minmax(0,1fr)}.analytics-line-chart{height:190px}.analytics-chart-wrap{min-height:190px}.analytics-y-labels{padding:16px 0 27px;font-size:9px}.analytics-trend-note{align-items:flex-start;flex-wrap:wrap}.analytics-donut-layout{grid-template-columns:125px minmax(0,1fr);gap:12px;min-height:160px}.analytics-donut{width:120px;height:120px}.analytics-donut:before{inset:12px}.analytics-donut strong{font-size:24px}.analytics-legend-item{font-size:11px}.analytics-property-bar-row{grid-template-columns:minmax(90px,1fr) minmax(50px,.8fr) 20px;gap:9px}.analytics-property-bar-name{font-size:11px}.analytics-insight-row{gap:9px}}
 @media(max-width:390px){.analytics-kpis{grid-template-columns:1fr 1fr}.analytics-kpi-icon{right:11px;top:11px;width:26px;height:26px}.analytics-kpi{padding:13px}.analytics-donut-layout{grid-template-columns:1fr;justify-items:center}.analytics-legend{width:100%}.analytics-card-heading{align-items:flex-start}}
+
+/* EstateHub global theme switch */
+:root{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark;--primary:#75d488;--accent:#a5f0a1;--ink:#edf3ee;--muted:#a5b1a7;--bg:#111813;--surface:#1b241d;--line:#344137;--danger:#ff8a80;--amber:#f2bd67;--shadow:0 16px 45px rgba(0,0,0,.28)}
+:root[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+:root[data-theme="dark"] .nav,:root[data-theme="dark"] .sidebar,:root[data-theme="dark"] .topbar,:root[data-theme="dark"] .panel,:root[data-theme="dark"] .metric,:root[data-theme="dark"] .auth-card,:root[data-theme="dark"] .feature-grid article,:root[data-theme="dark"] .article-card,:root[data-theme="dark"] .listing-card,:root[data-theme="dark"] .float-card,:root[data-theme="dark"] .landlord-property-card,:root[data-theme="dark"] .landlord-application-card,:root[data-theme="dark"] .analytics-kpi,:root[data-theme="dark"] .analytics-chart-card,:root[data-theme="dark"] .analytics-breakdown-card,:root[data-theme="dark"] .analytics-insight-card{background-color:var(--surface);border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .nav,:root[data-theme="dark"] .sidebar,:root[data-theme="dark"] .topbar{background-color:#171f19}
+:root[data-theme="dark"] .workspace,:root[data-theme="dark"] .searchbox,:root[data-theme="dark"] .analytics-status-callout,:root[data-theme="dark"] .analytics-empty,:root[data-theme="dark"] .landlord-application-details blockquote,:root[data-theme="dark"] .landlord-empty-state{background:#202a22;color:var(--muted);border-color:var(--line)}
+:root[data-theme="dark"] input,:root[data-theme="dark"] select,:root[data-theme="dark"] textarea{background:#161e18;color:var(--ink);border-color:#3a483d}
+:root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder{color:#859389}
+:root[data-theme="dark"] .btn.ghost,:root[data-theme="dark"] .btn.danger{background:#202a22;color:var(--primary);border-color:#405247}
+:root[data-theme="dark"] .btn.danger{color:#ff9c93;border-color:#67403e}
+:root[data-theme="dark"] .badge{background:#29332c;color:#d5ded7}
+:root[data-theme="dark"] .badge.green{background:#1e3d27;color:#a5e7ad}
+:root[data-theme="dark"] .badge.red{background:#482825;color:#ffaaa2}
+:root[data-theme="dark"] .badge.amber{background:#45371f;color:#f2ca82}
+:root[data-theme="dark"] .badge.blue{background:#243951;color:#a9caff}
+:root[data-theme="dark"] .property-row,:root[data-theme="dark"] .request-row,:root[data-theme="dark"] .job-row,:root[data-theme="dark"] th,:root[data-theme="dark"] td{border-color:var(--line)}
+:root[data-theme="dark"] th{background:#202a22;color:var(--muted)}
+:root[data-theme="dark"] .listing-card,:root[data-theme="dark"] .property-row{background-color:var(--surface)}
+:root[data-theme="dark"] .auth-page{background:radial-gradient(circle at top right,#1e3825,transparent 35%),var(--bg)}
+:root[data-theme="dark"] .role-grid a,:root[data-theme="dark"] .landlord-property-image,:root[data-theme="dark"] .analytics-property-bar-track{background:#202a22;border-color:var(--line);color:var(--muted)}
+:root[data-theme="dark"] .metric strong,:root[data-theme="dark"] .analytics-donut strong,:root[data-theme="dark"] .landlord-property-title h3 a{color:var(--ink)}
+:root[data-theme="dark"] .analytics-donut:before{background:#1b241d}
+:root[data-theme="dark"] .analytics-gridline,:root[data-theme="dark"] .analytics-legend-item{border-color:var(--line)}
+:root[data-theme="dark"] .theme-toggle{background:#edf4ee;color:#17241a;border-color:#d5e3d6}
+.theme-toggle{position:fixed;right:20px;bottom:20px;z-index:1000;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 15px;border:1px solid #dce6dc;border-radius:999px;background:#17341e;color:#fff;box-shadow:0 8px 24px rgba(12,35,15,.2);font-size:12px;font-weight:800;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease}
+.theme-toggle:hover{transform:translateY(-2px);box-shadow:0 11px 28px rgba(12,35,15,.24)}
+.theme-toggle:focus-visible{outline:3px solid #80c98a;outline-offset:3px}
+.theme-toggle-icon{font-size:17px;line-height:1}
+@media(max-width:600px){.theme-toggle{right:14px;bottom:14px;min-height:42px;padding:0 13px}}
+
+:root[data-theme="dark"] .heart,:root[data-theme="dark"] .faq details,:root[data-theme="dark"] .plan,:root[data-theme="dark"] .docs-page,:root[data-theme="dark"] .jobs-count,:root[data-theme="dark"] .job-card,:root[data-theme="dark"] .jobs-empty,:root[data-theme="dark"] .jobs-group-count,:root[data-theme="dark"] .profile-summary-card,:root[data-theme="dark"] .profile-form-card,:root[data-theme="dark"] .maintenance-card,:root[data-theme="dark"] .maintenance-empty,:root[data-theme="dark"] .maintenance-form-card,:root[data-theme="dark"] .account-stat,:root[data-theme="dark"] .account-activity,:root[data-theme="dark"] .account-settings,:root[data-theme="dark"] .home-role-card,:root[data-theme="dark"] .rent-payment-item,:root[data-theme="dark"] .stay-mode-tabs a,:root[data-theme="dark"] .account-role-card,:root[data-theme="dark"] .lease-overview-card,:root[data-theme="dark"] .lease-search-panel,:root[data-theme="dark"] .landlord-payment-metric,:root[data-theme="dark"] .payment-section-nav a{background-color:var(--surface);border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .jobs-group-count,:root[data-theme="dark"] .jobs-count{background:#202a22;color:var(--muted)}
+:root[data-theme="dark"] .payment-empty-state,:root[data-theme="dark"] .record-payout-details form{background:#202a22;border-color:var(--line)}
