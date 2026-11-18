@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Approve rental application — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav">
+    <a class="brand" href="/">Estate<span>Hub</span></a>
+    <nav><a href="/dashboard/">Dashboard</a><a href="/leases/">Leases</a><a href="/properties/">Properties</a></nav>
+    <a href="/logout/">Logout</a>
+  </header>
+  <main class="public narrow approval-confirm-page">
+    <a class="back" href="/dashboard/">← Back to dashboard</a>
+    <section class="panel approval-confirm-card">
+      <div class="eyebrow">RENTAL APPLICATION</div>
+      <span class="badge amber">Pending landlord review</span>
+      <h1>Approve this application?</h1>
+      <p>Approval creates an active month-to-month lease and a one-time security deposit obligation.</p>
+      <div class="approval-property-summary">
+        <div>
+          <h2>{{application.property.title}} · Unit {{application.unit.unit_number|default:'1'}}</h2>
+          <p>{{application.property.location}}</p>
+          <p>Applicant: <strong>{{application.tenant.get_full_name|default:application.tenant.username}}</strong></p>
+          <p>Monthly rent: <strong>KES {{application.unit.rent|default:application.property.rent|floatformat:2}}</strong></p>
+          <p>Initial deposit: <strong>KES {{application.unit.rent|default:application.property.rent|floatformat:2}}</strong> (equal to one month’s rent)</p>
+        </div>
+      </div>
+      {% if application.message %}<blockquote class="application-message">{{application.message|linebreaksbr}}</blockquote>{% endif %}
+      <p class="approval-note">The lease starts on the approval date, renews automatically each month, and rent becomes due monthly. The tenant will see the lease and deposit in their account.</p>
+      <form method="post" action="/applications/{{application.id}}/approve/" class="approval-confirm-actions">
+        {% csrf_token %}
+        <a class="btn ghost" href="/dashboard/">Review later</a>
+        <button class="btn" type="submit">Approve application and create lease</button>
+      </form>
+    </section>
+  </main>
+</div>
+{% endblock %}
