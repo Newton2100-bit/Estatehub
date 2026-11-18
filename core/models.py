@@ -198,6 +198,12 @@ class Lease(models.Model):
             elapsed = max(0, elapsed - 1)
         return add_months(self.start_date, elapsed + 1) - timedelta(days=1)
 
+    def save(self, *args, **kwargs):
+        # Keep new leases valid even if a creation path omits the deposit field.
+        if self._state.adding and not self.deposit_amount and self.rent:
+            self.deposit_amount = self.rent
+        super().save(*args, **kwargs)
+
 class LeaseChangeRequest(models.Model):
     TYPE_CHOICES=[("renewal","Renewal"),("move_out","Move-out")]
     STATUS_CHOICES=[("Pending","Pending"),("Approved","Approved"),("Declined","Declined")]
