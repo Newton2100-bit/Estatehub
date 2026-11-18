@@ -165,9 +165,15 @@ class RentalApplicationAdmin(admin.ModelAdmin):
 
 @admin.register(Lease)
 class LeaseAdmin(admin.ModelAdmin):
-    list_display = ("property", "unit", "tenant", "start_date", "end_date", "rent", "rent_due_day", "status")
+    list_display = ("property", "unit", "tenant", "start_date", "displayed_end_date", "rent", "rent_due_day", "status")
     list_filter = ("status", "start_date", "end_date")
     search_fields = ("property__title", "tenant__username")
+
+    @admin.display(description="Current term end", ordering="end_date")
+    def displayed_end_date(self, lease):
+        if lease.status == "Active" and not lease.change_requests.filter(request_type="move_out", status="Approved").exists():
+            return lease.monthly_term_end()
+        return lease.end_date
 
 
 @admin.register(LeaseChangeRequest)
