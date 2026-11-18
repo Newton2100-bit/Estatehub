@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}{{job.title}} — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav"><a class="brand" href="/">Estate<span>Hub</span></a><a href="/jobs/">← Back to jobs</a><a href="/logout/">Logout</a></header>
+  <main class="public wrap">
+    <div class="eyebrow">{% if role == 'tenant' %}REPAIR PROGRESS{% else %}JOB DETAILS{% endif %}</div>
+    <div class="page-head"><div><span class="badge {% if job.urgent %}red{% else %}green{% endif %}">{{job.status|upper}}</span><h1>{{job.title}}</h1><p>JB-{{job.id|stringformat:'04d'}} · {{job.location}}</p></div>{% if role != 'tenant' %}<strong class="big-money">KES {{job.payout}}</strong>{% endif %}</div>
+    <div class="content-grid">
+      <section class="panel">
+        <h2>Work description</h2><p>{{job.description|default:'No additional instructions provided.'}}</p>
+        {% if job.request_id and role != 'tenant' or job.request_id and job.request.requester_id == request.user.id %}<p>Linked tenant complaint: <a href="/maintenance/">{{job.request.title}}</a></p>{% endif %}
+        {% if job.payout_record %}<p><b>Payout status:</b> {{job.payout_record.status}}{% if job.payout_record.paid_at %} · recorded {{job.payout_record.paid_at|date:'M d, Y'}} via {{job.payout_record.payment_method}}{% endif %}</p>{% endif %}
+        {% if role == 'worker' %}
+          {% if job.status == 'Open' %}
+            {% if worker_request.status == 'Pending' %}<p class="badge amber">Your request is awaiting landlord or caretaker approval.</p>
+            {% elif worker_request.status == 'Rejected' %}<p>Your previous request was declined. You may request again while the job remains open.</p><form method="post" action="/jobs/{{job.id}}/request/">{% csrf_token %}<button class="btn">Request approval again</button></form>
+            {% else %}<p>Send a request to the property team. You can start work after they approve and assign you.</p><form method="post" action="/jobs/{{job.id}}/request/">{% csrf_token %}<button class="btn">Request approval</button></form>{% endif %}
+          {% elif job.worker_id == request.user.id and job.status == 'Assigned' %}<form method="post" action="/jobs/{{job.id}}/start/">{% csrf_token %}<button class="btn">Start approved work</button></form>
+          {% elif job.worker_id == request.user.id and job.status == 'In Progress' %}<form method="post" action="/jobs/{{job.id}}/complete/">{% csrf_token %}<button class="btn">Mark complete</button></form>
+          {% elif job.worker_id == request.user.id %}<p>You were approved and assigned to this job. Current status: {{job.status}}.</p>{% endif %}
+        {% endif %}
+      </section>
+      <aside class="panel"><h3>Property details</h3><p><b>{{job.property.title|default:job.location}}</b></p><p>{{job.location}}</p>{% if role == 'tenant' %}<h3>Repair status</h3><p><span class="badge">{{job.status}}</span></p>{% if job.worker %}<p>Assigned worker: {{job.worker.get_full_name|default:job.worker.username}}</p>{% else %}<p>The property team has not assigned a worker yet.</p>{% endif %}<a class="btn ghost" href="/maintenance/">View maintenance report</a>{% else %}<p>Access details are shared by the caretaker after assignment.</p><hr><h3>Estimated payout</h3><strong class="big-money">KES {{job.payout}}</strong><p>After completion, the landlord can request a Daraja payout when configured or record a transfer sent outside EstateHub.</p>{% endif %}</aside>
+    </div>
+  </main>
+</div>
+{% endblock %}
