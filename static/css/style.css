@@ -452,3 +452,56 @@
 @media(max-width:1050px){.tenant-rent-overview{grid-template-columns:1fr}.tenant-rent-focus{min-height:255px}.tenant-rent-focus h2{margin-top:24px}}
 @media(max-width:850px){.tenant-home-grid{grid-template-columns:1fr}.tenant-updates-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.tenant-welcome{align-items:flex-start;flex-direction:column;min-height:210px;padding:23px 21px}.tenant-welcome-actions{justify-items:start}.tenant-welcome-art{right:5%;bottom:-35px}.tenant-rent-focus{min-height:0;padding:20px}.tenant-rent-focus h2{margin-top:22px}.tenant-rent-schedule{padding:17px 14px}.tenant-schedule-row{grid-template-columns:36px minmax(0,1fr);gap:9px}.tenant-schedule-row .badge{grid-column:2;justify-self:start}.tenant-dashboard-section{margin:21px 0}.tenant-section-heading{align-items:flex-start}.tenant-section-heading h2{font-size:18px}.tenant-home-card{padding:15px}.tenant-home-actions{display:grid;grid-template-columns:1fr}.tenant-updates-panel{padding:17px 14px}.tenant-update-row{grid-template-columns:28px minmax(0,1fr)}.tenant-update-row .badge{grid-column:2;justify-self:start}.tenant-discover-section{padding:16px 13px}.tenant-discover-card{grid-template-columns:58px minmax(0,1fr) 18px;gap:9px}.tenant-discover-image{width:58px;height:52px}.tenant-discover-price{grid-column:2;grid-row:2;text-align:left}.tenant-discover-arrow{grid-column:3;grid-row:1/3}.tenant-empty-state{align-items:flex-start;flex-wrap:wrap}.tenant-empty-state .btn{margin-left:47px}}
+
+/* Leases page layout */
+.lease-management-page{padding-top:39px;padding-bottom:80px}
+.lease-page-heading{align-items:flex-end;margin-bottom:22px}
+.lease-page-heading h1{margin:0;font-size:clamp(30px,4vw,42px);letter-spacing:-1.3px}
+.lease-page-heading p{max-width:760px;margin:8px 0 0;font-size:13px}
+.lease-page-heading>.btn{white-space:nowrap}
+.lease-record-list{display:grid;gap:15px}
+.lease-card{min-width:0;padding:23px 24px;margin:0;scroll-margin-top:24px}
+.lease-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding-bottom:17px;border-bottom:1px solid var(--line)}
+.lease-card-kicker{display:block;margin-bottom:5px;color:var(--primary);font-size:9px;font-weight:900;letter-spacing:1.2px}
+.lease-card-heading h2{margin:0;font-size:21px;letter-spacing:-.5px}
+.lease-card-heading h2 span{color:var(--muted);font-weight:500}
+.lease-card-heading p{display:flex;gap:10px;flex-wrap:wrap;margin:5px 0 0;font-size:12px}
+.lease-card-heading p span{padding-left:10px;border-left:1px solid var(--line)}
+.lease-facts{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:16px 0}
+.lease-facts>div{min-width:0;padding:12px 14px;border:1px solid #edf1ec;border-radius:10px;background:#f8faf7}
+.lease-facts strong{overflow:hidden;font-size:13px;text-overflow:ellipsis;white-space:nowrap}
+.lease-facts span{margin-top:3px;font-size:10px}
+.lease-change-request{align-items:flex-start;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--line)}
+.lease-change-request>div{flex:1 1 280px;min-width:0}
+.lease-change-request h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 5px;font-size:13px}
+.lease-change-request p{margin:4px 0;font-size:11px}
+.lease-change-request small{color:var(--muted);font-size:10px}
+.lease-review-form{width:min(100%,350px);padding:13px;border:1px solid var(--line);border-radius:11px;background:var(--bg)}
+.lease-review-form label{margin:0;font-size:10px}
+.lease-review-form textarea{margin-top:5px;padding:9px;resize:vertical}
+.lease-review-actions{display:flex;gap:7px;margin-top:9px}
+.lease-tenant-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px;padding-top:15px;border-top:1px solid var(--line)}
+.lease-tenant-actions .btn{font-size:11px}
+.lease-landlord-tools{display:grid;gap:10px;margin-top:17px;padding-top:15px;border-top:1px solid var(--line)}
+.lease-landlord-tools .rent-record-details{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.lease-landlord-tools .rent-record-details summary{color:var(--primary);font-size:11px;font-weight:800;cursor:pointer}
+.lease-landlord-tools .rent-record-details>p{margin:9px 0;font-size:11px}
+.lease-landlord-tools .rent-record-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lease-landlord-tools .rent-record-form label{margin:0;font-size:10px}
+.lease-landlord-tools .rent-record-form input,.lease-landlord-tools .rent-record-form select{margin-top:5px;padding:9px;font-size:11px}
+.lease-landlord-tools .rent-record-form button{justify-self:start}
+.lease-landlord-tools .rent-due-setting{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--bg)}
+.lease-landlord-tools .rent-due-setting small{font-size:10px}
+.lease-document-note{margin:13px 0 0;color:#879389;font-size:9px}
+.lease-empty-state{display:grid;justify-items:center;padding:38px 20px;text-align:center}
+.lease-empty-state>span{display:grid;place-items:center;width:40px;height:40px;margin-bottom:10px;border-radius:12px;background:#edf6ed;color:#37834a;font-size:24px}
+.lease-empty-state h2{margin:0 0 6px;font-size:19px}
+.lease-empty-state p{max-width:440px;margin:0 0 15px;font-size:12px}
+.lease-pagination{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+:root[data-theme="dark"] .lease-card-heading{border-color:var(--line)}
+:root[data-theme="dark"] .lease-card-heading p span{border-color:var(--line)}
+:root[data-theme="dark"] .lease-facts>div{border-color:#344137;background:#202a22}
+:root[data-theme="dark"] .lease-review-form,:root[data-theme="dark"] .lease-landlord-tools .rent-record-details,:root[data-theme="dark"] .lease-landlord-tools .rent-due-setting{border-color:#344137;background:#202a22}
+:root[data-theme="dark"] .lease-empty-state>span{background:#26382a;color:#b6d9bc}
+@media(max-width:850px){.lease-overview{grid-template-columns:repeat(3,minmax(0,1fr))}.lease-search-panel{grid-template-columns:repeat(2,minmax(0,1fr))}.lease-search-panel label:first-child{grid-column:1/-1}.lease-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.lease-management-page{padding-top:27px;padding-bottom:60px}.lease-page-heading{display:block}.lease-page-heading>.btn{margin-top:13px}.lease-overview{grid-template-columns:1fr;gap:8px;margin:18px 0}.lease-overview-card{padding:14px 16px}.lease-search-panel{grid-template-columns:1fr;padding:14px}.lease-search-panel label:first-child{grid-column:auto}.lease-search-actions{display:grid;grid-template-columns:1fr 1fr}.lease-card{padding:17px 15px}.lease-card-heading{gap:10px}.lease-card-heading h2{font-size:17px}.lease-card-heading p{font-size:10px}.lease-facts{gap:7px;margin:12px 0}.lease-facts>div{padding:10px}.lease-facts strong{font-size:11px}.lease-facts span{font-size:9px}.lease-tenant-actions{display:grid}.lease-landlord-tools .rent-record-form{grid-template-columns:1fr}.lease-pagination{gap:8px;flex-wrap:wrap}}
