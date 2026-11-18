@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Move-out request — EstateHub{% endblock %}
+{% block body %}
+<div class="app-lite">
+  <header class="nav">
+    <a class="brand" href="/">Estate<span>Hub</span></a>
+    <nav><a href="/dashboard/">Dashboard</a><a href="/properties/">Properties</a><a class="active" href="/leases/">Leases</a><a href="/payments/">Payments</a></nav>
+    <a href="/logout/">Logout</a>
+  </header>
+  <main class="public narrow moveout-page">
+    <a class="back" href="/leases/">← Back to my leases</a>
+    <div class="eyebrow">LEASE CHANGE</div>
+    <h1>Move-out request</h1>
+    <p class="lead">Request to end your monthly lease. Your landlord will review the requested date and message.</p>
+
+    <section class="panel moveout-property-card">
+      <div class="eyebrow">YOUR RENTAL</div>
+      <h2>{{lease.property.title}} · Unit {{lease.unit.unit_number|default:'1'}}</h2>
+      <p>{{lease.property.location}}</p>
+      <div class="detail-facts">
+        <div><strong>{{lease.start_date|date:'M d, Y'}}</strong><span>Lease started</span></div>
+        <div><strong>{{current_term_end|date:'M d, Y'}}</strong><span>Current term ends</span></div>
+        <div><strong>KES {{lease.rent|floatformat:2}}</strong><span>Monthly rent</span></div>
+      </div>
+    </section>
+
+    {% if approved_moveout %}
+      <section class="panel moveout-status-card">
+        <span class="badge green">Approved</span>
+        <h2>Your move-out date is approved</h2>
+        <p>Approved move-out date: <strong>{{approved_moveout.proposed_end_date|date:'M d, Y'}}</strong>.</p>
+        {% if approved_moveout.landlord_response %}<p>Landlord response: {{approved_moveout.landlord_response}}</p>{% endif %}
+      </section>
+    {% elif pending_change %}
+      <section class="panel moveout-status-card">
+        <span class="badge amber">Awaiting landlord</span>
+        <h2>{{pending_change.get_request_type_display}} request is pending</h2>
+        <p>Submitted {{pending_change.created_at|date:'M d, Y'}}. You can send another request after the landlord responds.</p>
+        {% if pending_change.message %}<div class="moveout-message-preview">{{pending_change.message|linebreaksbr}}</div>{% endif %}
+      </section>
+    {% elif lease.status != 'Active' %}
+      <section class="panel moveout-status-card"><span class="badge">{{lease.status}}</span><h2>This lease is no longer active</h2><p>You can review its past move-out requests below.</p></section>
+    {% else %}
+      <section class="panel moveout-form-card">
+        <h2>Tell your landlord when you plan to leave</h2>
+        <p>Choose a date within the current monthly term. The lease remains active until your landlord approves the request.</p>
+        <form method="post" class="moveout-request-form">
+          {% csrf_token %}
+          <label>Requested move-out date
+            <input type="date" name="proposed_end_date" min="{{today|date:'Y-m-d'}}" max="{{current_term_end|date:'Y-m-d'}}" required>
+          </label>
+          <label>Message to your landlord <span>(optional)</span>
+            <textarea name="message" rows="8" maxlength="4000" placeholder="Share your plans, any questions, or details the landlord should know."></textarea>
+          </label>
+          <p class="moveout-help">Submitting this request does not end the lease automatically. Rent remains due under the lease until the move-out is approved.</p>
+          <div class="actions"><button class="btn" type="submit">Send move-out request</button><a class="btn ghost" href="/leases/">Cancel</a></div>
+        </form>
+      </section>
+    {% endif %}
+
+    {% if change_requests %}
+      <section class="panel moveout-history">
+        <h2>Request history</h2>
+        {% for change in change_requests %}
+          <article class="moveout-history-item">
+            <div><b>{{change.get_request_type_display}} · {{change.status}}</b><small>Requested move-out: {{change.proposed_end_date|date:'M d, Y'}} · Submitted {{change.created_at|date:'M d, Y'}}</small></div>
+            {% if change.message %}<p>{{change.message|linebreaksbr}}</p>{% endif %}
+            {% if change.landlord_response %}<p><b>Landlord response:</b> {{change.landlord_response|linebreaksbr}}</p>{% endif %}
+          </article>
+        {% endfor %}
+      </section>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}
