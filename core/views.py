@@ -278,6 +278,10 @@ def dashboard(request, role=None):
     rent_dues = []
     rent_due_total = 0
     rent_due_count = 0
+    open_complaint_count = 0
+    pending_application_count = 0
+    rental_income_total = Decimal("0")
+    successful_rental_payment_count = 0
 
     if actual_role == "tenant":
         properties = Property.objects.filter(status="Available", floors__units__status="Available").distinct().prefetch_related("images", "floors__units")[:3]
@@ -296,6 +300,13 @@ def dashboard(request, role=None):
         leases = Lease.objects.filter(property__owner=request.user, status="Active").select_related("property", "tenant").order_by("-start_date", "-pk")
         payments = Payment.objects.filter(lease__property__owner=request.user).select_related("lease", "user").order_by("-created_at")
         applications = RentalApplication.objects.filter(property__owner=request.user).select_related("property", "unit", "tenant").order_by("-created_at")
+        open_complaint_count = requests.exclude(status="Resolved").count()
+        pending_application_count = applications.filter(status="Pending").count()
+        successful_rental_payments = payments.filter(
+            kind__in=["Rent payment", "Short stay payment"], status__in=["Completed", "Paid"]
+        )
+        rental_income_total = successful_rental_payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        successful_rental_payment_count = successful_rental_payments.count()
     elif actual_role == "worker":
         jobs = Job.objects.filter(Q(status="Open") | Q(worker=request.user)).select_related("property")
         worker_payouts = Payment.objects.filter(job__worker=request.user, kind="Worker payout")
@@ -349,6 +360,8 @@ def dashboard(request, role=None):
         counts=counts, payout_due_total=payout_due_total, payout_paid_total=payout_paid_total,
         open_job_count=open_job_count, assigned_job_count=assigned_job_count,
         rent_dues=rent_dues, rent_due_total=rent_due_total, rent_due_count=rent_due_count,
+        open_complaint_count=open_complaint_count, pending_application_count=pending_application_count,
+        rental_income_total=rental_income_total, successful_rental_payment_count=successful_rental_payment_count,
     ))
 
 
