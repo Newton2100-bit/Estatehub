@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 import calendar
+import csv
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 import hmac
@@ -15,7 +16,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Min, Prefetch, Q, Sum
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
@@ -1679,6 +1680,179 @@ def analytics(request):
         "unresolved_request_count": MaintenanceRequest.objects.filter(
             property__in=properties
         ).exclude(status="Resolved").count(),
+    })
+
+
+@role_required("tenant", "landlord", "worker", "management", "admin")
+def reports(request):
+    """Role-scoped operational and financial reports for the selected period."""
+    role = current_role(request.user)
+    today = timezone.localdate()
+    default_start = today - timedelta(days=29)
+
+    def read_date(value, fallback):
+        try:
+            return date.fromisoformat(value) if value else fallback
+        except (TypeError, ValueError):
+            return fallback
+
+    start = read_date(request.GET.get("from"), default_start)
+    end = read_date(request.GET.get("to"), today)
+    if end < start:
+        start, end = default_start, today
+
+    def dated(queryset, field="created_at"):
+        return queryset.filter(**{f"{field}__date__gte": start, f"{field}__date__lte": end})
+
+    cards, tables = [], []
+    def card(label, value, note=""):
+        if isinstance(value, Decimal):
+            display_value = f"{value:,.2f}"
+        elif isinstance(value, int):
+            display_value = f"{value:,}"
+        else:
+            display_value = value
+        cards.append({"label": label, "value": value, "display_value": display_value, "note": note})
+
+    def table(title, headers, rows):
+        tables.append({"title": title, "headers": headers, "rows": rows})
+
+    if role == "landlord":
+        owned = Property.objects.filter(owner=request.user).prefetch_related("floors__units")
+        property_ids = list(owned.values_list("id", flat=True))
+        leases = Lease.objects.filter(property_id__in=property_ids, status="Active").select_related("property", "unit", "tenant")
+        active_leases = list(leases)
+        active_unit_ids = {lease.unit_id for lease in active_leases if lease.unit_id}
+        rent_dues = build_rent_schedule(active_leases, today=today)
+        rent_due_by_property = {}
+        for due in rent_dues:
+            if due["status"] in {"Overdue", "Due today"}:
+                property_id = due["lease"].property_id
+                rent_due_by_property[property_id] = rent_due_by_property.get(property_id, Decimal("0")) + due["amount"]
+        open_repairs = MaintenanceRequest.objects.filter(property_id__in=property_ids).exclude(status="Resolved")
+        stays = Booking.objects.filter(property_id__in=property_ids, status__in=["Confirmed", "Checked in", "Checked out"], check_in__lte=end, check_out__gte=start).select_related("property")
+        applications = dated(RentalApplication.objects.filter(property_id__in=property_ids).select_related("property", "unit", "tenant").order_by("-created_at"))
+        payments = dated(Payment.objects.filter(
+            Q(lease__property_id__in=property_ids) | Q(booking__property_id__in=property_ids) | Q(job__property_id__in=property_ids)
+        ).select_related("lease__property", "booking__property", "job__property", "job__worker", "user").order_by("-created_at"))
+        requests = dated(MaintenanceRequest.objects.filter(property_id__in=property_ids).select_related("property", "unit").order_by("-created_at"))
+        jobs = dated(Job.objects.filter(property_id__in=property_ids).select_related("property", "worker").order_by("-created_at"))
+        income_by_property = {}
+        for payment in payments:
+            prop_id = (payment.lease.property_id if payment.lease_id else
+                       payment.booking.property_id if payment.booking_id else
+                       payment.job.property_id if payment.job_id else None)
+            if not prop_id:
+                continue
+            if payment.kind in {"Rent payment", "Short stay payment"} and payment.status == "Completed":
+                income_by_property[prop_id] = income_by_property.get(prop_id, Decimal("0")) + payment.amount
+            elif payment.kind == "Worker payout":
+                payout_by_property[prop_id] = payout_by_property.get(prop_id, Decimal("0")) + payment.amount
+        unit_count = occupied_count = 0
+        property_rows = []
+        for prop in owned:
+            units = [unit for floor in prop.floors.all() for unit in floor.units.all()]
+            occupied = sum(1 for unit in units if unit.id in active_unit_ids or unit.status == "Rented")
+            unit_count += len(units)
+            occupied_count += occupied
+            property_open_repairs = open_repairs.filter(property_id=prop.id).count()
+            prop_leases = [lease for lease in active_leases if lease.property_id == prop.id]
+            monthly_rent = sum((lease.rent for lease in prop_leases), Decimal("0"))
+            confirmed_stays = sum(1 for stay in stays if stay.property_id == prop.id)
+            property_rows.append([prop.title, f"{prop.city}, {prop.county or prop.location}", prop.get_status_display(), len(units), occupied, len(units)-occupied, len(prop_leases), monthly_rent, rent_due_by_property.get(prop.id, Decimal("0")), confirmed_stays, income_by_property.get(prop.id, Decimal("0")), property_open_repairs])
+        collected = sum((p.amount for p in payments if p.kind in {"Rent payment", "Short stay payment"} and p.status == "Completed"), Decimal("0"))
+        card("Properties", owned.count())
+        card("Units occupied", f"{occupied_count} / {unit_count}", f"{(occupied_count / unit_count * 100):.0f}% occupancy" if unit_count else "Add units to track occupancy")
+        card("Contracted monthly rent", sum((lease.rent for lease in active_leases), Decimal("0")), "Active long-term leases")
+        card("Rent due now", sum(rent_due_by_property.values(), Decimal("0")), "Overdue or due today")
+        card("Collected in period", collected, f"KES · {start:%d %b} to {end:%d %b %Y}")
+        card("Open repair backlog", open_repairs.count(), "Across all your properties")
+        table("Property by property", ["Property", "Location", "Listing status", "Units", "Occupied", "Vacant", "Active leases", "Monthly rent (KES)", "Rent due now (KES)", "Confirmed stays in period", "Collected in period (KES)", "Open repairs"], property_rows)
+        table("Maintenance activity", ["Property", "Unit", "Report", "Priority", "Status", "Reported"], [[r.property.title if r.property_id else r.property_name, r.unit.unit_number if r.unit_id else "—", r.title, r.priority, r.status, r.created_at.strftime("%d %b %Y")] for r in requests])
+        table("Worker jobs", ["Property", "Job", "Worker", "Status", "Payout (KES)", "Posted"], [[j.property.title if j.property_id else j.location, j.title, (j.worker.get_full_name() or j.worker.username) if j.worker_id else "Unassigned", j.status, j.payout, j.created_at.strftime("%d %b %Y")] for j in jobs])
+        table("Rental applications", ["Property", "Unit", "Applicant", "Status", "Submitted"], [[a.property.title, a.unit.unit_number if a.unit_id else "—", a.tenant.get_full_name() or a.tenant.username, a.status, a.created_at.strftime("%d %b %Y")] for a in applications])
+        table("Worker payout ledger", ["Property", "Job", "Worker", "Status", "Amount (KES)", "Date"], [[p.job.property.title if p.job_id and p.job.property_id else "—", p.job.title if p.job_id else p.entity, p.job.worker.get_full_name() or p.job.worker.username if p.job_id and p.job.worker_id else "—", p.status, p.amount, p.created_at.strftime("%d %b %Y")] for p in payments if p.kind == "Worker payout"])
+    elif role == "tenant":
+        leases = Lease.objects.filter(tenant=request.user).select_related("property", "unit").order_by("-start_date")
+        active_leases = list(leases.filter(status="Active"))
+        dues = build_rent_schedule(active_leases, today=today)
+        payments = dated(Payment.objects.filter(user=request.user).select_related("lease__property", "booking__property").order_by("-created_at"))
+        requests = dated(MaintenanceRequest.objects.filter(requester=request.user).select_related("property", "unit").order_by("-created_at"))
+        applications = dated(RentalApplication.objects.filter(tenant=request.user).select_related("property", "unit").order_by("-created_at"))
+        stays = Booking.objects.filter(tenant=request.user, check_in__lte=end, check_out__gte=start).select_related("property", "unit").order_by("-check_in")
+        paid_total = sum((p.amount for p in payments if p.status == "Completed" and p.kind != "Worker payout"), Decimal("0"))
+        outstanding = sum((d["amount"] for d in dues if d["status"] in {"Overdue", "Due today"}), Decimal("0"))
+        card("Active homes", len(active_leases))
+        card("Rent due now", outstanding, "Overdue or due today")
+        card("Paid in period", paid_total, "Completed rent and stay payments")
+        card("Open maintenance reports", MaintenanceRequest.objects.filter(requester=request.user).exclude(status="Resolved").count(), "Current unresolved backlog")
+        table("My leases", ["Home", "Unit", "Status", "Rent (KES/month)", "Lease dates", "Due day"], [[l.property.title, l.unit.unit_number if l.unit_id else "—", l.status, l.rent, f"{l.start_date:%d %b %Y} – {l.end_date:%d %b %Y}", l.rent_due_day] for l in leases])
+        table("Rent due schedule", ["Home", "Unit", "Period", "Due date", "Amount (KES)", "Status"], [[d["lease"].property.title, d["lease"].unit.unit_number if d["lease"].unit_id else "—", d["period_label"], d["due_date"].strftime("%d %b %Y"), d["amount"], d["status"]] for d in dues])
+        table("Payment activity", ["Description", "Type", "Status", "Amount (KES)", "Date", "Receipt"], [[p.lease.property.title if p.lease_id else p.booking.property.title if p.booking_id else p.entity, p.kind, p.status, p.amount, p.created_at.strftime("%d %b %Y"), p.provider_receipt or p.payment_reference or "—"] for p in payments])
+        table("Maintenance reports", ["Home", "Unit", "Report", "Priority", "Status", "Reported"], [[r.property.title if r.property_id else r.property_name, r.unit.unit_number if r.unit_id else "—", r.title, r.priority, r.status, r.created_at.strftime("%d %b %Y")] for r in requests])
+        table("Rental applications and stays", ["Home", "Type", "Dates / submitted", "Status", "Amount (KES)"], [[a.property.title, "Rental application", a.created_at.strftime("%d %b %Y"), a.status, "—"] for a in applications] + [[b.property.title, "Short stay", f"{b.check_in or b.date:%d %b %Y} – {b.check_out or b.date:%d %b %Y}", b.status, b.total_price or "—"] for b in stays])
+    elif role == "worker":
+        jobs = dated(Job.objects.filter(worker=request.user).select_related("property").order_by("-created_at"))
+        all_payouts = Payment.objects.filter(job__worker=request.user, kind="Worker payout")
+        payouts = dated(all_payouts.select_related("job__property").order_by("-created_at"))
+        paid = sum((p.amount for p in payouts if p.status == "Paid"), Decimal("0"))
+        pending = all_payouts.filter(status="Awaiting payment").aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        completed = jobs.filter(status="Completed").count()
+        card("Assigned jobs", jobs.count())
+        card("Completed jobs", completed)
+        card("Awaiting payout", pending, "Completed work not yet marked paid")
+        card("Paid in period", paid, "Recorded worker payouts")
+        table("My work", ["Job", "Property", "Trade", "Status", "Payout (KES)", "Posted"], [[j.title, j.property.title if j.property_id else j.location, j.trade, j.status, j.payout, j.created_at.strftime("%d %b %Y")] for j in jobs])
+        table("Payout history", ["Job", "Property", "Status", "Amount (KES)", "Date", "Reference"], [[p.job.title if p.job_id else p.entity, p.job.property.title if p.job_id and p.job.property_id else "—", p.status, p.amount, p.created_at.strftime("%d %b %Y"), p.payment_reference or p.provider_receipt or "—"] for p in payouts])
+    elif role == "management":
+        properties = Property.objects.filter(caretaker=request.user).prefetch_related("floors__units")
+        property_ids = list(properties.values_list("id", flat=True))
+        open_requests = MaintenanceRequest.objects.filter(property_id__in=property_ids).exclude(status="Resolved")
+        active_jobs = Job.objects.filter(property_id__in=property_ids, status__in=["Open", "Assigned", "In Progress"])
+        requests = dated(MaintenanceRequest.objects.filter(property_id__in=property_ids).select_related("property", "unit", "requester").order_by("-created_at"))
+        jobs = dated(Job.objects.filter(property_id__in=property_ids).select_related("property", "worker").order_by("-created_at"))
+        units = [u for p in properties for f in p.floors.all() for u in f.units.all()]
+        card("Assigned properties", properties.count())
+        card("Units", len(units), f"{sum(1 for u in units if u.status == 'Rented')} recorded as occupied")
+        card("Open reports", MaintenanceRequest.objects.filter(property_id__in=property_ids).exclude(status="Resolved").count(), "Current unresolved backlog")
+        card("Jobs in period", jobs.count(), f"{sum(1 for j in jobs if j.status == 'Completed')} completed")
+        table("Building condition", ["Property", "Location", "Units", "Available", "Occupied", "Open reports", "Active jobs"], [[p.title, p.location, sum(len(f.units.all()) for f in p.floors.all()), sum(1 for f in p.floors.all() for u in f.units.all() if u.status == "Available"), sum(1 for f in p.floors.all() for u in f.units.all() if u.status == "Rented"), open_requests.filter(property_id=p.id).count(), active_jobs.filter(property_id=p.id).count()] for p in properties])
+        table("Maintenance reports", ["Property", "Unit", "Report", "Priority", "Status", "Reported"], [[r.property.title if r.property_id else r.property_name, r.unit.unit_number if r.unit_id else "—", r.title, r.priority, r.status, r.created_at.strftime("%d %b %Y")] for r in requests])
+        table("Worker jobs", ["Property", "Job", "Worker", "Status", "Payout (KES)", "Posted"], [[j.property.title if j.property_id else j.location, j.title, (j.worker.get_full_name() or j.worker.username) if j.worker_id else "Unassigned", j.status, j.payout, j.created_at.strftime("%d %b %Y")] for j in jobs])
+    else:
+        properties = Property.objects.all()
+        payments = dated(Payment.objects.select_related("lease__property", "booking__property", "job__property").order_by("-created_at"))
+        requests = dated(MaintenanceRequest.objects.select_related("property").order_by("-created_at"))
+        jobs = dated(Job.objects.select_related("property", "worker").order_by("-created_at"))
+        role_counts = {key: User.objects.filter(profile__role=key).count() for key, _ in Profile.ROLE_CHOICES}
+        role_counts["admin"] = User.objects.filter(Q(is_superuser=True) | Q(profile__role="admin")).distinct().count()
+        card("Users", User.objects.count(), "All accounts")
+        card("Properties", properties.count(), f"{properties.filter(status='Pending').count()} awaiting review")
+        card("Active leases", Lease.objects.filter(status="Active").count())
+        card("Open maintenance", MaintenanceRequest.objects.exclude(status="Resolved").count())
+        card("Payments recorded", sum((p.amount for p in payments if p.status == "Completed"), Decimal("0")), f"Completed entries in selected period")
+        table("Accounts by role", ["Role", "Accounts"], [[label, role_counts.get(key, 0)] for key, label in Profile.ROLE_CHOICES])
+        table("Listings by status", ["Status", "Listings"], [[label, properties.filter(status=key).count()] for key, label in Property.STATUS])
+        table("Platform activity", ["Type", "Record", "Status", "Amount / priority", "Date"], [["Maintenance", r.property.title if r.property_id else r.property_name, r.status, r.priority, r.created_at.strftime("%d %b %Y")] for r in requests] + [["Worker job", j.property.title if j.property_id else j.location, j.status, f"KES {j.payout}", j.created_at.strftime("%d %b %Y")] for j in jobs] + [[p.kind, p.entity, p.status, f"KES {p.amount}", p.created_at.strftime("%d %b %Y")] for p in payments])
+
+    if request.GET.get("export") == "csv":
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="estatehub-{role}-report-{start.isoformat()}-to-{end.isoformat()}.csv"'
+        writer = csv.writer(response)
+        def csv_safe(value):
+            return "'" + value if isinstance(value, str) and value.startswith(("=", "+", "-", "@")) else value
+        writer.writerow(["EstateHub", role.title(), f"{start.isoformat()} to {end.isoformat()}"])
+        for item in tables:
+            writer.writerow([])
+            writer.writerow([item["title"]])
+            writer.writerow(item["headers"])
+            writer.writerows([[csv_safe(value) for value in row] for row in item["rows"]])
+        return response
+
+    return render(request, "portal/reports.html", {
+        "role": role, "report_start": start, "report_end": end,
+        "report_start_value": start.isoformat(), "report_end_value": end.isoformat(),
+        "cards": cards, "tables": tables,
     })
 
 
