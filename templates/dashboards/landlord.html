@@ -1,8 +1,90 @@
-{% extends 'dashboards/_shell.html' %}{% block title %}Landlord Portal{% endblock %}{% block dashboard %}
-<div class="page-head"><div><div class="eyebrow">LANDLORD PORTAL</div><h1>Property management</h1><p>Manage your listings, caretaker assignments, tenant applications, rent records, and maintenance.</p></div>{% if not pending_landlord and not rejected_landlord %}<a class="btn" href="/submit-property/">+ New property</a>{% endif %}</div>
-{% if pending_landlord %}<section class="panel"><span class="badge amber">Account review pending</span><h2>Your landlord account is awaiting admin approval.</h2><p>You can complete your profile while it is reviewed. Property posting and management will unlock after approval.</p><a class="btn ghost" href="/notifications/">View notifications</a></section>{% elif rejected_landlord %}<section class="panel"><span class="badge red">Account not approved</span><h2>Your landlord account was not approved.</h2><p>Open your notification for the review decision and contact support if you need help.</p><a class="btn ghost" href="/notifications/">View notification</a></section>{% else %}
-<div class="metric-grid"><div class="metric"><small>My properties</small><strong>{{properties|length}}</strong></div><div class="metric"><small>Active leases</small><strong>{{leases|length}}</strong></div><div class="metric"><small>Open complaints</small><strong>{{requests|length}}</strong><a href="/maintenance/">Review reports</a></div><div class="metric"><small>Rent records</small><strong>{{payments|length}}</strong></div></div>
-<div class="content-grid"><section class="panel"><div class="panel-head"><h2>My properties</h2><a href="/properties/">My listings</a></div>{% for p in properties %}<div class="property-row">{% with cover=p.images.first %}<div class="thumb">{% if cover %}<img src="{{cover.image.url}}" alt="{{p.title}} property photo">{% endif %}</div>{% endwith %}<div><b><a href="/property/{{p.id}}/">{{p.title}}</a></b><small>{{p.location}} · {% if p.rental_mode == 'short_stay' %}Short stay · Nightly booking and guest check-outs{% else %}Apartment · Monthly rentals{% endif %}</small><small>Caretaker: {% if p.caretaker %}{{p.caretaker.get_full_name|default:p.caretaker.username}}{% else %}Not assigned{% endif %}</small></div><span class="badge {% if p.status == 'Available' %}green{% elif p.status == 'Pending' %}amber{% endif %}">{{p.get_status_display}}</span><a href="/property/{{p.id}}/units/add/">Manage units</a><a href="/property/{{p.id}}/">{% if p.rental_mode == 'short_stay' %}Manage stays{% else %}View property{% endif %}</a><a href="/property/{{p.id}}/caretaker/">{% if p.caretaker_id %}Change caretaker{% else %}Assign caretaker{% endif %}</a></div>{% empty %}<p>You have not submitted a property yet.</p>{% endfor %}</section>
-<section class="panel"><div class="panel-head"><h2>Rental applications</h2><a href="/leases/">Leases</a></div>{% for a in applications %}<article class="request-row"><div><h3>{{a.property.title}} · Unit {{a.unit.unit_number|default:'1'}}</h3><p>Applicant: {{a.tenant.get_full_name|default:a.tenant.username}} · {{a.created_at|date:'M d, Y'}}</p>{% if a.message %}<p>{{a.message}}</p>{% endif %}<span class="badge">{{a.status}}</span></div>{% if a.status == 'Pending' %}<div class="actions"><a class="btn" href="/applications/{{a.id}}/approve/">Review and approve</a><form method="post" action="/applications/{{a.id}}/reject/">{% csrf_token %}<button class="btn danger">Decline</button></form></div>{% endif %}</article>{% empty %}<p>No rental applications yet.</p>{% endfor %}</section></div>
-<div class="content-grid"><section class="panel"><div class="panel-head"><h2>Maintenance requests</h2><a href="/maintenance/">Manage and post jobs</a></div>{% for r in requests|slice:':5' %}<p><b>{{r.title}}</b> · {{r.property.title|default:r.property_name}} · {{r.status}}</p>{% empty %}<p>No tenant complaints yet.</p>{% endfor %}</section><section class="panel"><div class="panel-head"><h2>Recent rent records</h2><a href="/payments/">View all</a></div>{% for p in payments|slice:':5' %}<p>{{p.lease.property.title|default:p.entity}} · KES {{p.amount}} · {{p.status}}</p>{% empty %}<p>No rent payments recorded yet.</p>{% endfor %}</section></div>{% endif %}
+{% extends 'dashboards/_shell.html' %}
+{% block title %}Landlord Portal{% endblock %}
+{% block dashboard %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">LANDLORD PORTAL</div>
+    <h1>Property management</h1>
+    <p>Manage your listings, caretaker assignments, tenant applications, rent records, and maintenance.</p>
+  </div>
+  {% if not pending_landlord and not rejected_landlord %}<a class="btn" href="/submit-property/">+ New property</a>{% endif %}
+</div>
+
+{% if pending_landlord %}
+  <section class="panel"><span class="badge amber">Account review pending</span><h2>Your landlord account is awaiting admin approval.</h2><p>You can complete your profile while it is reviewed. Property posting and management will unlock after approval.</p><a class="btn ghost" href="/notifications/">View notifications</a></section>
+{% elif rejected_landlord %}
+  <section class="panel"><span class="badge red">Account not approved</span><h2>Your landlord account was not approved.</h2><p>Open your notification for the review decision and contact support if you need help.</p><a class="btn ghost" href="/notifications/">View notification</a></section>
+{% else %}
+  <div class="metric-grid">
+    <div class="metric"><small>My properties</small><strong>{{ properties|length }}</strong></div>
+    <div class="metric"><small>Active leases</small><strong>{{ leases|length }}</strong></div>
+    <div class="metric"><small>Open complaints</small><strong>{{ requests|length }}</strong><a href="/maintenance/">Review reports</a></div>
+    <div class="metric"><small>Rent records</small><strong>{{ payments|length }}</strong></div>
+  </div>
+
+  <section class="panel landlord-dashboard-panel">
+    <div class="panel-head"><div><h2>My properties</h2><p class="landlord-section-note">Your newest listings appear first.</p></div><a href="/properties/">My listings</a></div>
+    <div class="landlord-property-list">
+      {% for p in properties %}
+        <article class="landlord-property-card">
+          {% with cover=p.images.first %}
+            <a class="landlord-property-image" href="/property/{{ p.id }}/" aria-label="View {{ p.title }}">
+              {% if cover %}<img src="{{ cover.image.url }}" alt="{{ p.title }} property photo">{% else %}<span>No photo</span>{% endif %}
+            </a>
+          {% endwith %}
+          <div class="landlord-property-main">
+            <div class="landlord-property-title"><h3><a href="/property/{{ p.id }}/">{{ p.title }}</a></h3><span class="badge {% if p.status == 'Available' %}green{% elif p.status == 'Pending' %}amber{% endif %}">{{ p.get_status_display }}</span></div>
+            <p>{{ p.location }}</p>
+            <div class="landlord-property-meta">
+              <span>{% if p.rental_mode == 'short_stay' %}Short stay · Nightly booking and guest check-outs{% else %}Apartment · Monthly rentals{% endif %}</span>
+              <span>Caretaker: {% if p.caretaker %}{{ p.caretaker.get_full_name|default:p.caretaker.username }}{% else %}Not assigned{% endif %}</span>
+            </div>
+          </div>
+          <nav class="landlord-property-actions" aria-label="Actions for {{ p.title }}">
+            <a class="btn ghost" href="/property/{{ p.id }}/units/add/">Manage units</a>
+            <a class="btn ghost" href="/property/{{ p.id }}/">{% if p.rental_mode == 'short_stay' %}Manage stays{% else %}View property{% endif %}</a>
+            <a class="btn ghost" href="/property/{{ p.id }}/caretaker/">{% if p.caretaker_id %}Change caretaker{% else %}Assign caretaker{% endif %}</a>
+          </nav>
+        </article>
+      {% empty %}
+        <div class="landlord-empty-state"><h3>No properties yet</h3><p>Once you add a listing, its status and management actions will appear here.</p><a class="btn" href="/submit-property/">Add your first property</a></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel landlord-dashboard-panel landlord-applications-panel">
+    <div class="panel-head"><div><h2>Rental applications</h2><p class="landlord-section-note">Review applicant details and decide on each request.</p></div><a href="/leases/">View leases</a></div>
+    <div class="landlord-application-list">
+      {% for a in applications %}
+        <article class="landlord-application-card">
+          <div class="landlord-application-details">
+            <div class="landlord-application-title"><h3>{{ a.property.title }} <span>· Unit {{ a.unit.unit_number|default:'1' }}</span></h3><span class="badge {% if a.status == 'Pending' %}amber{% elif a.status == 'Approved' %}green{% elif a.status == 'Rejected' %}red{% endif %}">{{ a.status }}</span></div>
+            <p><strong>{{ a.tenant.get_full_name|default:a.tenant.username }}</strong><span>Applied {{ a.created_at|date:'M d, Y' }}</span></p>
+            {% if a.message %}<blockquote>{{ a.message }}</blockquote>{% endif %}
+          </div>
+          {% if a.status == 'Pending' %}
+            <div class="landlord-application-actions"><a class="btn" href="/applications/{{ a.id }}/approve/">Review application</a><form method="post" action="/applications/{{ a.id }}/reject/">{% csrf_token %}<button class="btn danger">Decline</button></form></div>
+          {% endif %}
+        </article>
+      {% empty %}
+        <div class="landlord-empty-state"><h3>No applications to review</h3><p>New tenant applications for your properties will be listed here.</p></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="landlord-activity-grid">
+    <section class="panel landlord-activity-card">
+      <div class="panel-head"><div><h2>Maintenance requests</h2><p class="landlord-section-note">Latest reports across your properties.</p></div><a href="/maintenance/">Manage requests</a></div>
+      <div class="landlord-activity-list">
+        {% for r in requests|slice:':5' %}<div class="landlord-activity-row"><div><strong>{{ r.title }}</strong><span>{{ r.property.title|default:r.property_name }}</span></div><span class="badge">{{ r.status }}</span></div>{% empty %}<p class="landlord-activity-empty">No tenant complaints yet.</p>{% endfor %}
+      </div>
+    </section>
+    <section class="panel landlord-activity-card">
+      <div class="panel-head"><div><h2>Recent rent records</h2><p class="landlord-section-note">The latest recorded rent payments.</p></div><a href="/payments/">View all</a></div>
+      <div class="landlord-activity-list">
+        {% for p in payments|slice:':5' %}<div class="landlord-activity-row"><div><strong>{{ p.lease.property.title|default:p.entity }}</strong><span>{{ p.created_at|date:'M d, Y' }} · KES {{ p.amount }}</span></div><span class="badge {% if p.status == 'Paid' %}green{% elif p.status == 'Awaiting payment' %}amber{% endif %}">{{ p.status }}</span></div>{% empty %}<p class="landlord-activity-empty">No rent payments recorded yet.</p>{% endfor %}
+      </div>
+    </section>
+  </div>
+{% endif %}
 {% endblock %}
